@@ -1,0 +1,21 @@
+# Unity
+SkyBreakerUnity/[Ll]ibrary/
+SkyBreakerUnity/[Tt]emp/
+SkyBreakerUnity/[Oo]bj/
+SkyBreakerUnity/[Bb]uild/
+SkyBreakerUnity/[Bb]uilds/
+SkyBreakerUnity/[Ll]ogs/
+SkyBreakerUnity/[Uu]ser[Ss]ettings/
+SkyBreakerUnity/MemoryCaptures/
+*.csproj
+*.sln
+*.suo
+*.user
+*.pidb
+*.booproj
+*.apk
+*.aab
+.vs/
+.vscode/
+.DS_Store
+Thumbs.db

@@ -33,7 +33,7 @@ Solo necesitas Unity Hub con un editor de Unity 6 (o 2022.3 LTS) y Git o VS Code
 
 1. Descarga el repositorio.
    - Con VS Code: abre la paleta de comandos (Ctrl+Shift+P), escribe `Git: Clone`, pega la URL
-     `https://github.com/zermeno07/skybreaker.git` y elige una carpeta (por ejemplo Documentos).
+     `https://github.com/Zermeno07/SkyBreaker.git` y elige una carpeta (por ejemplo Documentos).
    - Si no quieres usar Git: en GitHub, botón verde "Code" > "Download ZIP" y descomprímelo.
    - Importante: cambia a la rama donde está el prototipo (o fusiónala a `main` primero).
 2. Abre Unity Hub > Proyectos > botón "Agregar" (Add) > "Agregar proyecto desde disco"

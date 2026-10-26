@@ -4,11 +4,9 @@ using UnityEngine;
 public enum GameState { Menu, Playing, Paused, GameOver }
 
 // Administrador del juego: estados (menú, jugando, pausa, fin de partida), generación de
-// tuberías/poderes/enemigos con pooling, colisiones, puntuación, récord y la interfaz (HUD).
-//
-// La entrada se lee con los eventos de IMGUI (OnGUI), así funciona igual con el
-// Input Manager clásico y con el nuevo Input System, sin instalar paquetes.
-public class GameManager : MonoBehaviour
+// tuberías, poderes y enemigos con pooling, colisiones, puntuación, récord y escenarios.
+// La interfaz está en GameUI.cs (misma clase, archivo aparte).
+public partial class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
@@ -21,30 +19,43 @@ public class GameManager : MonoBehaviour
     Camera cam;
     Transform world;
     PlayerBird bird;
-    BackgroundScroller background;
+    Scenery scenery;
+    Fx fx;
+    AudioManager audioManager;
 
     readonly List<PipePair> pipes = new List<PipePair>();
     readonly List<Enemy> enemies = new List<Enemy>();
     readonly List<PowerUp> powerUps = new List<PowerUp>();
+    readonly List<Projectile> projectiles = new List<Projectile>();
 
     float distanceSinceLastPipe;
     float lastGapCenter;
     int pipesUntilPowerUp;
+    int pipesSinceEnemy;
+    int unlockedEnemies;
+    EnemyType? forcedEnemy;
+    bool gunGiftPending;
     bool newRecord;
     float gameOverTime;
-    bool flapKeyHeld;
+    float shotCooldown;
+    float shake;
 
-    static readonly Color[] SkyColors =
-    {
-        new Color(1f, 0.72f, 0.55f),   // amanecer
-        new Color(0.45f, 0.75f, 1f),   // día
-        new Color(1f, 0.5f, 0.38f),    // atardecer
-        new Color(0.1f, 0.12f, 0.28f), // noche
-    };
+    // Escenarios
+    ZoneId startZone;
+    ZoneId currentZone;
+    float zoneTransition;     // > 0 mientras hay un cambio de escenario en curso
+    ZoneId pendingZone;
+    bool zoneSwapped;
+
+    // Estadísticas de la partida
+    int enemiesDestroyed;
+    int powerUpsTaken;
+    int zonesVisited;
 
     float HalfWidth => cam.orthographicSize * cam.aspect;
     float BirdX => -Mathf.Min(HalfWidth * 0.45f, 4f);
     float Difficulty01 => Mathf.Clamp01(Score / (float)GameConfig.MasteryScore);
+    ZoneTheme Theme => ZoneTheme.All[(int)currentZone];
 
     void Awake()
     {
@@ -54,9 +65,14 @@ public class GameManager : MonoBehaviour
 
         SetupCamera();
         world = new GameObject("Mundo").transform;
-        background = new BackgroundScroller(world);
+        audioManager = AudioManager.Create(transform);
+        scenery = new Scenery(world, cam);
+        scenery.Thunder += () => PlaySfx(Sfx.Thunder, 0.8f);
+        fx = new Fx(world);
         bird = PlayerBird.Create(world);
         HighScore = PlayerPrefs.GetInt(GameConfig.HighScoreKey, 0);
+        startZone = (ZoneId)Mathf.Clamp(PlayerPrefs.GetInt(GameConfig.StartZoneKey, 0), 0, 2);
+        vibration = PlayerPrefs.GetInt(GameConfig.VibrationKey, 1) == 1;
         GoToMenu();
     }
 
@@ -68,10 +84,11 @@ public class GameManager : MonoBehaviour
             var go = new GameObject("Main Camera") { tag = "MainCamera" };
             cam = go.AddComponent<Camera>();
         }
+        if (cam.GetComponent<AudioListener>() == null) cam.gameObject.AddComponent<AudioListener>();
         cam.orthographic = true;
         cam.orthographicSize = 5f;
         cam.clearFlags = CameraClearFlags.SolidColor;
-        cam.backgroundColor = SkyColors[0];
+        cam.backgroundColor = Color.black;
         cam.transform.position = new Vector3(0f, 0f, -10f);
         cam.transform.rotation = Quaternion.identity;
     }
@@ -83,8 +100,14 @@ public class GameManager : MonoBehaviour
         Time.timeScale = 1f;
         ClearWorld();
         Score = 0;
+        currentZone = startZone;
+        scenery.Build(startZone);
         bird.ResetBird(BirdX);
         State = GameState.Menu;
+        menuScreen = MenuScreen.Main;
+        audioManager.SetMusicDucked(false);
+        audioManager.SetIntensity(0f);
+        audioManager.PlaySong(0);
     }
 
     void StartGame()
@@ -98,16 +121,33 @@ public class GameManager : MonoBehaviour
         distanceSinceLastPipe = GameConfig.PipeSpacing * 0.5f;
         lastGapCenter = 0f;
         pipesUntilPowerUp = GameConfig.FirstPowerUpPipes;
+        pipesSinceEnemy = 0;
+        unlockedEnemies = 0;
+        forcedEnemy = null;
+        gunGiftPending = false;
+        enemiesDestroyed = powerUpsTaken = 0;
+        zonesVisited = 1;
+        zoneTransition = 0f;
+        if (currentZone != startZone || scenery.Theme == null)
+        {
+            currentZone = startZone;
+            scenery.Build(startZone);
+        }
         bird.ResetBird(BirdX);
         bird.Flap();
         State = GameState.Playing;
+        audioManager.SetMusicDucked(false);
+        audioManager.PlaySong(Theme.song);
+        ShowBanner(Theme.name, "¡Supera tu récord!", Theme.uiAccent);
     }
 
     void Pause()
     {
         if (State != GameState.Playing) return;
         State = GameState.Paused;
+        pauseScreen = MenuScreen.Main;
         Time.timeScale = 0f;
+        audioManager.SetMusicDucked(true);
     }
 
     void Resume()
@@ -115,26 +155,36 @@ public class GameManager : MonoBehaviour
         if (State != GameState.Paused) return;
         State = GameState.Playing;
         Time.timeScale = 1f;
+        audioManager.SetMusicDucked(false);
     }
 
     void EndGame()
     {
         State = GameState.GameOver;
         gameOverTime = Time.unscaledTime;
+        audioManager.SetMusicDucked(true);
+        PlaySfx(Sfx.GameOver);
         if (Score > HighScore)
         {
             HighScore = Score;
             newRecord = true;
             PlayerPrefs.SetInt(GameConfig.HighScoreKey, HighScore);
             PlayerPrefs.Save();
+            Invoke(nameof(PlayRecordJingle), 0.8f);
         }
     }
+
+    void PlayRecordJingle() { PlaySfx(Sfx.Record); }
 
     void ClearWorld()
     {
         foreach (var p in pipes) p.gameObject.SetActive(false);
         foreach (var e in enemies) e.gameObject.SetActive(false);
         foreach (var p in powerUps) p.gameObject.SetActive(false);
+        foreach (var p in projectiles) p.gameObject.SetActive(false);
+        fx.Clear();
+        popups.Clear();
+        bannerTimer = 0f;
     }
 
     void OnApplicationPause(bool paused)
@@ -151,16 +201,24 @@ public class GameManager : MonoBehaviour
         {
             case GameState.Menu:
                 bird.IdleBob(BirdX);
-                background.Tick(GameConfig.StartSpeed * 0.5f * dt);
+                scenery.Tick(dt, GameConfig.StartSpeed * 0.5f * dt, false);
+                fx.Tick(dt, 0f);
                 break;
             case GameState.Playing:
                 TickPlaying(dt);
                 break;
             case GameState.GameOver:
                 bird.TickDead(dt);
+                scenery.Tick(dt, 0f, false);
+                fx.Tick(dt, 0f);
                 break;
         }
-        UpdateSkyColor(dt);
+        TickPopups(Time.unscaledDeltaTime);
+
+        // Temblor de cámara
+        shake = Mathf.MoveTowards(shake, 0f, Time.unscaledDeltaTime * 2f);
+        var off = State == GameState.Paused ? Vector2.zero : Random.insideUnitCircle * shake * 0.3f;
+        cam.transform.position = new Vector3(off.x, off.y, -10f);
     }
 
     void TickPlaying(float dt)
@@ -168,9 +226,17 @@ public class GameManager : MonoBehaviour
         Speed = Mathf.Lerp(GameConfig.StartSpeed, GameConfig.MaxSpeed, Difficulty01);
         float dx = Speed * dt;
         float halfW = HalfWidth;
+        shotCooldown -= dt;
 
         bird.TickPhysics(dt);
-        background.Tick(dx);
+        scenery.Tick(dt, dx, true);
+        fx.Tick(dt, dx);
+        TickZoneTransition(dt);
+        audioManager.SetIntensity(Score / 60f);
+
+        // Plumitas cuando está en modo fantasma
+        if (bird.IsGhost && Random.value < 0.4f)
+            fx.Burst(bird.Position, 1, new Color(0.6f, 0.95f, 1f, 0.6f), 0.3f, 0.5f, 0.35f, 0f, true, true, 9);
 
         // Generación de tuberías por distancia recorrida
         distanceSinceLastPipe += dx;
@@ -186,11 +252,13 @@ public class GameManager : MonoBehaviour
         foreach (var pipe in pipes)
         {
             if (!pipe.gameObject.activeSelf) continue;
-            pipe.Move(dx);
+            pipe.Tick(dx);
+            pipe.SetFaded(bird.IsGhost);
             if (!pipe.Scored && pipe.X + pipe.HalfWidth < c.x - r)
             {
                 pipe.Scored = true;
-                Score += 1;
+                AddScore(1, null);
+                PlaySfx(Sfx.Score, 0.7f);
             }
             if (pipe.X < -halfW - GameConfig.PipeWidth * 2f) pipe.gameObject.SetActive(false);
         }
@@ -198,7 +266,7 @@ public class GameManager : MonoBehaviour
         foreach (var e in enemies)
         {
             if (!e.gameObject.activeSelf) continue;
-            e.Tick(dx + GameConfig.EnemyExtraSpeed * dt);
+            e.Tick(dt, dx, c, halfW, this);
             if (e.Position.x < -halfW - 2f) e.gameObject.SetActive(false);
         }
 
@@ -211,7 +279,113 @@ public class GameManager : MonoBehaviour
                 Collect(p);
         }
 
-        CheckCollisions(c, r);
+        TickProjectiles(dt, dx, halfW);
+        if (State == GameState.Playing) CheckCollisions(c, r);
+    }
+
+    void TickProjectiles(float dt, float dx, float halfW)
+    {
+        foreach (var pr in projectiles)
+        {
+            if (!pr.gameObject.activeSelf) continue;
+            pr.Tick(dt, dx);
+            var pos = pr.Position;
+            if (pos.x > halfW + 2f || pos.x < -halfW - 2f || pos.y < GameConfig.GroundY - 1f || pos.y > GameConfig.CeilingY + 2f)
+            {
+                pr.gameObject.SetActive(false);
+                continue;
+            }
+
+            if (pr.FromPlayer)
+            {
+                PlayerShotHits(pr);
+                continue;
+            }
+
+            // Las bombas explotan al tocar el suelo
+            if (pr.Kind == ProjectileKind.Bomb && pos.y - pr.Radius <= GameConfig.GroundY)
+            {
+                pr.gameObject.SetActive(false);
+                fx.Explosion(new Vector2(pos.x, GameConfig.GroundY + 0.2f), 0.8f);
+                PlaySfx(Sfx.BombBoom, 0.7f);
+                continue;
+            }
+
+            if (State == GameState.Playing && !bird.IsInvulnerable &&
+                (pos - bird.Position).sqrMagnitude < Sqr(bird.Radius + pr.Radius))
+            {
+                pr.gameObject.SetActive(false);
+                if (pr.Kind == ProjectileKind.Bomb) fx.Explosion(pos, 0.8f);
+                Hurt();
+            }
+        }
+    }
+
+    void PlayerShotHits(Projectile shot)
+    {
+        var pos = shot.Position;
+        foreach (var e in enemies)
+        {
+            if (!e.gameObject.activeSelf) continue;
+            if ((e.Position - pos).sqrMagnitude < Sqr(e.Radius + shot.Radius))
+            {
+                shot.gameObject.SetActive(false);
+                if (e.TakeDamage()) DestroyEnemy(e, true);
+                else
+                {
+                    fx.Burst(pos, 6, new Color(1f, 0.9f, 0.5f), 3f, 0.25f, 0.1f);
+                    PlaySfx(Sfx.Hit, 0.5f, 1.5f);
+                }
+                return;
+            }
+        }
+        foreach (var pr in projectiles)
+        {
+            if (pr == shot || !pr.gameObject.activeSelf || pr.FromPlayer) continue;
+            if ((pr.Position - pos).sqrMagnitude < Sqr(pr.Radius + shot.Radius + 0.1f))
+            {
+                shot.gameObject.SetActive(false);
+                pr.gameObject.SetActive(false);
+                fx.Explosion(pr.Position, 0.5f);
+                PlaySfx(Sfx.Explosion, 0.5f, 1.3f);
+                return;
+            }
+        }
+        foreach (var pipe in pipes)
+        {
+            if (!pipe.gameObject.activeSelf) continue;
+            int hit = pipe.HitByShot(pos, shot.Radius, out var at);
+            if (hit == 0) continue;
+            shot.gameObject.SetActive(false);
+            if (hit == 2)
+            {
+                fx.Burst(pos, 18, ZoneTheme.Hex(0xa8552a), 5f, 0.7f, 0.2f, -12f);
+                fx.Burst(pos, 8, ZoneTheme.Hex(0x6b2e14), 3f, 0.8f, 0.3f, -12f);
+                fx.Burst(pos, 4, new Color(0.7f, 0.6f, 0.5f, 0.5f), 1f, 0.8f, 0.8f, 0f, true, true, 14, 1.5f);
+                PlaySfx(Sfx.PipeBreak);
+                AddScore(1, pos);
+                Shake(0.3f);
+            }
+            else
+            {
+                fx.Burst(at, 5, new Color(1f, 0.9f, 0.6f), 2.5f, 0.2f, 0.08f);
+                PlaySfx(Sfx.Hit, 0.25f, 2f);
+            }
+            return;
+        }
+    }
+
+    void DestroyEnemy(Enemy e, bool byPlayer)
+    {
+        e.gameObject.SetActive(false);
+        fx.Explosion(e.Position);
+        PlaySfx(Sfx.Explosion);
+        Shake(0.35f);
+        if (byPlayer)
+        {
+            enemiesDestroyed++;
+            AddScore(e.Points, e.Position);
+        }
     }
 
     void CheckCollisions(Vector2 c, float r)
@@ -219,63 +393,180 @@ public class GameManager : MonoBehaviour
         // El suelo y el techo siempre bloquean; quitan vida si no hay invulnerabilidad.
         if (c.y - r <= GameConfig.GroundY)
         {
-            if (!bird.IsInvulnerable && !TakeHit()) return;
+            if (!bird.IsInvulnerable && !Hurt()) return;
             bird.BounceOffGround();
             return;
         }
         if (c.y + r >= GameConfig.CeilingY)
         {
-            if (!bird.IsInvulnerable && !TakeHit()) return;
+            if (!bird.IsInvulnerable && !Hurt()) return;
             bird.BounceOffCeiling();
             return;
         }
 
         if (bird.IsInvulnerable) return;
 
-        foreach (var pipe in pipes)
+        if (!bird.IsGhost)
         {
-            if (pipe.gameObject.activeSelf && pipe.Overlaps(c, r))
+            foreach (var pipe in pipes)
             {
-                TakeHit();
-                return;
+                if (pipe.gameObject.activeSelf && pipe.IsSolid && pipe.Overlaps(c, r))
+                {
+                    Hurt();
+                    return;
+                }
             }
         }
 
         foreach (var e in enemies)
         {
-            if (e.gameObject.activeSelf && (e.Position - c).sqrMagnitude < Sqr(r + GameConfig.EnemyRadius))
+            if (e.gameObject.activeSelf && (e.Position - c).sqrMagnitude < Sqr(r + e.Radius))
             {
-                e.gameObject.SetActive(false);
-                TakeHit();
+                DestroyEnemy(e, false);
+                Hurt();
                 return;
             }
         }
     }
 
-    // Devuelve true si Pico sigue vivo después del golpe.
-    bool TakeHit()
+    // Golpe a Pico. Devuelve true si sigue vivo.
+    bool Hurt()
     {
+        if (bird.HasShield)
+        {
+            bird.BreakShield();
+            bird.StartInvulnerability(1f);
+            fx.Burst(bird.Position, 16, new Color(0.5f, 0.85f, 1f), 4f, 0.5f, 0.15f);
+            PlaySfx(Sfx.ShieldBreak);
+            Shake(0.3f);
+            AddPopup(bird.Position, "¡Escudo roto!", new Color(0.5f, 0.85f, 1f));
+            return true;
+        }
+
         Lives--;
+        Shake(0.6f);
+        Vibrate();
+        PlaySfx(Sfx.Hit);
+        fx.Burst(bird.Position, 10, ZoneTheme.Hex(0x3b8bd8), 3f, 0.9f, 0.15f, -3f);
+        fx.Burst(bird.Position, 6, ZoneTheme.Hex(0x7ccaff), 2.5f, 0.9f, 0.12f, -3f);
         if (Lives <= 0)
         {
             EndGame();
             return false;
         }
-        bird.StartInvulnerability();
+        bird.StartInvulnerability(GameConfig.InvulnerableTime);
         return true;
     }
 
     void Collect(PowerUp p)
     {
         p.gameObject.SetActive(false);
+        powerUpsTaken++;
+        var col = PowerUp.TypeColor(p.Type);
+        fx.Burst(p.Position, 14, col, 3.5f, 0.6f, 0.12f);
+        fx.Burst(p.Position, 1, new Color(col.r, col.g, col.b, 0.6f), 0f, 0.35f, 0.5f, 0f, true, true, 14, 2.5f);
+        AddPopup(p.Position, PowerUp.DisplayName(p.Type), col);
         switch (p.Type)
         {
             case PowerUpType.ExtraLife:
                 Lives = Mathf.Min(Lives + 1, GameConfig.MaxLives);
+                PlaySfx(Sfx.PowerLife);
+                break;
+            case PowerUpType.Gun:
+                bird.AddAmmo(GameConfig.GunShots);
+                PlaySfx(Sfx.PowerGun);
                 break;
             case PowerUpType.Shrink:
-                bird.ApplyShrink();
+                bird.ApplyTemp(TempPower.Shrink, GameConfig.ShrinkDuration);
+                PlaySfx(Sfx.PowerShrink);
                 break;
+            case PowerUpType.Ghost:
+                bird.ApplyTemp(TempPower.Ghost, GameConfig.GhostDuration);
+                PlaySfx(Sfx.PowerGhost);
+                break;
+            case PowerUpType.Shield:
+                bird.GiveShield();
+                PlaySfx(Sfx.PowerShield);
+                break;
+        }
+    }
+
+    void Shoot()
+    {
+        if (State != GameState.Playing || shotCooldown > 0f) return;
+        if (!bird.UseAmmo())
+        {
+            PlaySfx(Sfx.Click, 0.6f, 0.7f);
+            return;
+        }
+        shotCooldown = GameConfig.ShotCooldown;
+        var tip = bird.GunTip;
+        Get(projectiles, Projectile.Create).Launch(ProjectileKind.PlayerShot, tip, new Vector2(GameConfig.ShotSpeed, 0f));
+        fx.Burst(tip, 5, new Color(1f, 0.9f, 0.4f), 2f, 0.15f, 0.1f);
+        PlaySfx(Sfx.Shoot);
+    }
+
+    public void SpawnEnemyProjectile(ProjectileKind kind, Vector2 pos, Vector2 vel)
+    {
+        Get(projectiles, Projectile.Create).Launch(kind, pos, vel);
+    }
+
+    public void PlaySfx(Sfx sfx, float volume = 1f, float pitch = 1f)
+    {
+        audioManager.Play(sfx, volume, pitch);
+    }
+
+    void AddScore(int points, Vector2? at)
+    {
+        int before = Score;
+        Score += points;
+        if (at.HasValue) AddPopup(at.Value, "+" + points, new Color(1f, 0.95f, 0.4f));
+        OnScoreChanged(before);
+    }
+
+    // Desbloqueos por puntuación: arma, enemigos nuevos y cambio de escenario.
+    void OnScoreChanged(int before)
+    {
+        if (before < GameConfig.GunUnlockScore && Score >= GameConfig.GunUnlockScore)
+        {
+            gunGiftPending = true;
+            pipesUntilPowerUp = Mathf.Min(pipesUntilPowerUp, 1);
+        }
+
+        int shouldUnlock = Score < GameConfig.FirstEnemyScore ? 0
+            : Mathf.Min(4, 1 + (Score - GameConfig.FirstEnemyScore) / GameConfig.EnemyUnlockStep);
+        if (shouldUnlock > unlockedEnemies)
+        {
+            unlockedEnemies = shouldUnlock;
+            var type = (EnemyType)(unlockedEnemies - 1);
+            forcedEnemy = type;
+            ShowBanner("¡Nuevo enemigo: " + Enemy.DisplayName(type) + "!", Enemy.Hint(type), new Color(1f, 0.45f, 0.4f));
+            PlaySfx(Sfx.EnemyWarn);
+        }
+
+        var zone = (ZoneId)(((int)startZone + Score / GameConfig.PointsPerZone) % 3);
+        if (zone != currentZone && zoneTransition <= 0f)
+        {
+            pendingZone = zone;
+            zoneTransition = 1.2f;
+            zoneSwapped = false;
+        }
+    }
+
+    void TickZoneTransition(float dt)
+    {
+        if (zoneTransition <= 0f) return;
+        zoneTransition -= dt;
+        if (!zoneSwapped && zoneTransition <= 0.6f)
+        {
+            zoneSwapped = true;
+            currentZone = pendingZone;
+            zonesVisited++;
+            scenery.Build(currentZone);
+            foreach (var p in pipes) if (p.gameObject.activeSelf) p.ApplyTheme(Theme);
+            audioManager.PlaySong(Theme.song);
+            PlaySfx(Sfx.Zone);
+            ShowBanner("Zona " + zonesVisited + ": " + Theme.name, "La aventura continúa", Theme.uiAccent);
         }
     }
 
@@ -291,25 +582,96 @@ public class GameManager : MonoBehaviour
         center = Mathf.Clamp(center, lastGapCenter - GameConfig.MaxGapCenterJump, lastGapCenter + GameConfig.MaxGapCenterJump);
         lastGapCenter = center;
 
-        Get(pipes, PipePair.Create).Setup(x, center, gap);
+        Get(pipes, PipePair.Create).Setup(x, center, gap, ChoosePipeKind(), Theme);
 
+        bool spawnedPowerUp = false;
         pipesUntilPowerUp--;
         if (pipesUntilPowerUp <= 0)
         {
             pipesUntilPowerUp = Random.Range(GameConfig.PowerUpMinPipes, GameConfig.PowerUpMaxPipes + 1);
-            var type = Lives < GameConfig.MaxLives && Random.value < 0.5f ? PowerUpType.ExtraLife : PowerUpType.Shrink;
-            Get(powerUps, PowerUp.Create).Spawn(type, new Vector2(x + GameConfig.PipeSpacing * 0.5f, center));
+            Get(powerUps, PowerUp.Create).Spawn(ChoosePowerUp(), new Vector2(x + GameConfig.PipeSpacing * 0.5f, center));
+            spawnedPowerUp = true;
         }
 
-        if (Score >= GameConfig.EnemyStartScore)
+        TrySpawnEnemy(x + GameConfig.PipeSpacing * 0.5f, spawnedPowerUp);
+    }
+
+    PipeKind ChoosePipeKind()
+    {
+        float t = Mathf.InverseLerp(GameConfig.CrackedPipesScore, GameConfig.MasteryScore, Score);
+        float chance = Mathf.Lerp(0.12f, GameConfig.SpecialPipeChanceMax, t);
+        if (Score >= GameConfig.CrackedPipesScore && Random.value < chance)
+            return Score >= GameConfig.GhostPipesScore && Random.value < 0.5f ? PipeKind.Ghost : PipeKind.Cracked;
+        return PipeKind.Normal;
+    }
+
+    PowerUpType ChoosePowerUp()
+    {
+        if (gunGiftPending)
         {
-            float t = Mathf.InverseLerp(GameConfig.EnemyStartScore, GameConfig.MasteryScore, Score);
-            if (Random.value < Mathf.Lerp(GameConfig.EnemyChanceStart, GameConfig.EnemyChanceMax, t))
-            {
-                float y = Random.Range(GameConfig.GroundY + 1f, GameConfig.CeilingY - 1f);
-                Get(enemies, Enemy.Create).Spawn(new Vector2(x + GameConfig.PipeSpacing * 0.5f, y));
-            }
+            gunGiftPending = false;
+            return PowerUpType.Gun;
         }
+        var options = new List<PowerUpType>();
+        var weights = new List<float>();
+        System.Action<PowerUpType, float> Option = (t, w) => { if (w > 0f) { options.Add(t); weights.Add(w); } };
+
+        Option(PowerUpType.ExtraLife, Lives < GameConfig.MaxLives ? 2f : 0f);
+        Option(PowerUpType.Shrink, 1.5f);
+        Option(PowerUpType.Gun, Score >= GameConfig.GunUnlockScore ? (unlockedEnemies > 0 ? 3f : 1.5f) : 0f);
+        Option(PowerUpType.Ghost, Score >= GameConfig.GhostUnlockScore ? 1.5f : 0f);
+        Option(PowerUpType.Shield, Score >= GameConfig.ShieldUnlockScore && !bird.HasShield ? 1.5f : 0f);
+
+        float total = 0f;
+        foreach (var w in weights) total += w;
+        float pick = Random.value * total;
+        for (int i = 0; i < options.Count; i++)
+        {
+            pick -= weights[i];
+            if (pick <= 0f) return options[i];
+        }
+        return options[options.Count - 1];
+    }
+
+    // Los enemigos empiezan en 10 puntos y su frecuencia sube poco a poco.
+    // Al principio solo puede haber uno en pantalla y con descanso entre uno y otro.
+    void TrySpawnEnemy(float x, bool powerUpHere)
+    {
+        if (unlockedEnemies == 0) return;
+        pipesSinceEnemy++;
+
+        int active = 0;
+        foreach (var e in enemies) if (e.gameObject.activeSelf) active++;
+        int maxActive = Score < 30 ? 1 : Score < 60 ? 2 : 3;
+        int minGap = Score < 30 ? 2 : 1;
+        float chance = Mathf.Min(GameConfig.EnemyChanceMax,
+            GameConfig.EnemyChanceStart + (Score - GameConfig.FirstEnemyScore) * GameConfig.EnemyChancePerPoint);
+
+        EnemyType type;
+        if (forcedEnemy.HasValue)
+        {
+            if (active >= maxActive) return; // espera a que se vaya el anterior
+            type = forcedEnemy.Value;
+            forcedEnemy = null;
+        }
+        else
+        {
+            if (powerUpHere || active >= maxActive || pipesSinceEnemy <= minGap || Random.value > chance) return;
+            type = (EnemyType)Random.Range(0, unlockedEnemies);
+        }
+        pipesSinceEnemy = 0;
+
+        float y;
+        switch (type)
+        {
+            case EnemyType.Wasp: y = Random.Range(-1.5f, 1.5f); break;
+            case EnemyType.Drone: y = Random.Range(-2.3f, 2.3f); break;
+            case EnemyType.Crow: y = GameConfig.CeilingY - 1.1f; break;
+            default: y = Random.Range(GameConfig.GroundY + 1.3f, GameConfig.CeilingY - 1.3f); break;
+        }
+        float attackSlow = Mathf.Lerp(GameConfig.EnemyAttackSlowStart, 1f,
+            Mathf.InverseLerp(GameConfig.FirstEnemyScore, GameConfig.MasteryScore, Score));
+        Get(enemies, Enemy.Create).Spawn(type, new Vector2(x, y), attackSlow);
     }
 
     // Pooling: reutiliza un objeto inactivo o crea uno nuevo.
@@ -324,210 +686,12 @@ public class GameManager : MonoBehaviour
 
     static float Sqr(float v) => v * v;
 
-    void UpdateSkyColor(float dt)
+    void Shake(float amount) { shake = Mathf.Max(shake, amount); }
+
+    void Vibrate()
     {
-        float t = Score / 25f;
-        int i = Mathf.FloorToInt(t) % SkyColors.Length;
-        var target = Color.Lerp(SkyColors[i], SkyColors[(i + 1) % SkyColors.Length], t - Mathf.Floor(t));
-        cam.backgroundColor = Color.Lerp(cam.backgroundColor, target, Mathf.Clamp01(dt * 2f));
-    }
-
-    // ---------------------------------------------------------------- Interfaz (IMGUI)
-
-    GUIStyle big, medium, small, button;
-    float uiScale;
-
-    void EnsureStyles()
-    {
-        uiScale = Mathf.Max(0.5f, Mathf.Min(Screen.width, Screen.height * 1.4f) / 1000f);
-        if (big == null)
-        {
-            big = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
-            medium = new GUIStyle(big);
-            small = new GUIStyle(big) { fontStyle = FontStyle.Normal };
-            button = new GUIStyle(GUI.skin.button) { fontStyle = FontStyle.Bold };
-        }
-        big.fontSize = Mathf.RoundToInt(80 * uiScale);
-        medium.fontSize = Mathf.RoundToInt(40 * uiScale);
-        small.fontSize = Mathf.RoundToInt(26 * uiScale);
-        button.fontSize = Mathf.RoundToInt(34 * uiScale);
-    }
-
-    void OnGUI()
-    {
-        EnsureStyles();
-        Rect safe = Screen.safeArea;
-        safe.y = Screen.height - safe.yMax; // safeArea usa origen abajo; IMGUI usa origen arriba
-
-        switch (State)
-        {
-            case GameState.Menu: DrawMenu(safe); break;
-            case GameState.Playing: DrawHud(safe); break;
-            case GameState.Paused: DrawHud(safe); DrawPause(); break;
-            case GameState.GameOver: DrawHud(safe); DrawGameOver(); break;
-        }
-
-        // Los botones de arriba consumen su clic, así que aquí solo llegan toques "libres".
-        HandleInput(Event.current);
-    }
-
-    void HandleInput(Event e)
-    {
-        bool flapKey = e.keyCode == KeyCode.Space || e.keyCode == KeyCode.UpArrow || e.keyCode == KeyCode.W;
-        if (e.type == EventType.KeyUp && flapKey) flapKeyHeld = false;
-
-        bool press = e.type == EventType.MouseDown && e.button == 0;
-        if (e.type == EventType.KeyDown && flapKey && !flapKeyHeld)
-        {
-            flapKeyHeld = true;
-            press = true;
-        }
-        bool escape = e.type == EventType.KeyDown && (e.keyCode == KeyCode.Escape || e.keyCode == KeyCode.P);
-
-        if (!press && !escape) return;
-        e.Use();
-
-        switch (State)
-        {
-            case GameState.Menu:
-                if (press) StartGame();
-                break;
-            case GameState.Playing:
-                if (escape) Pause();
-                else bird.Flap();
-                break;
-            case GameState.Paused:
-                if (escape) Resume();
-                break;
-            case GameState.GameOver:
-                if (escape) GoToMenu();
-                else if (Time.unscaledTime - gameOverTime > 0.6f) StartGame();
-                break;
-        }
-    }
-
-    void DrawMenu(Rect safe)
-    {
-        float w = Screen.width, h = Screen.height;
-        ShadowLabel(new Rect(0, h * 0.14f, w, 110 * uiScale), "SKY BREAKER", big, Color.white);
-        ShadowLabel(new Rect(0, h * 0.14f + 100 * uiScale, w, 50 * uiScale), "Prototipo jugable - avance 50%", small, new Color(1f, 1f, 0.8f));
-        ShadowLabel(new Rect(0, h * 0.40f, w, 60 * uiScale), "Récord: " + HighScore, medium, Color.white);
-
-        if (CenterButton(h * 0.52f, "JUGAR")) StartGame();
-
-        ShadowLabel(new Rect(0, h - safe.y - 160 * uiScale, w, 40 * uiScale),
-            "Toca la pantalla, haz clic o presiona ESPACIO para aletear", small, Color.white);
-        ShadowLabel(new Rect(0, h - safe.y - 120 * uiScale, w, 40 * uiScale),
-            "ESC o P para pausar", small, Color.white);
-
-        var r = new Rect(safe.xMax - 260 * uiScale, h - safe.y - 70 * uiScale, 240 * uiScale, 50 * uiScale);
-        if (GUI.Button(r, "Borrar récord", button))
-        {
-            HighScore = 0;
-            PlayerPrefs.DeleteKey(GameConfig.HighScoreKey);
-        }
-    }
-
-    void DrawHud(Rect safe)
-    {
-        float w = Screen.width;
-        float top = safe.y + 10 * uiScale;
-
-        ShadowLabel(new Rect(0, top, w, 100 * uiScale), Score.ToString(), big, Color.white);
-        ShadowLabel(new Rect(0, top + 85 * uiScale, w, 40 * uiScale), "Récord: " + HighScore, small, Color.white);
-
-        // Vidas (corazones) arriba a la izquierda
-        float hs = 50 * uiScale;
-        for (int i = 0; i < GameConfig.MaxLives; i++)
-        {
-            var col = i < Lives ? new Color(0.95f, 0.15f, 0.25f) : new Color(0f, 0f, 0f, 0.3f);
-            DrawHeart(new Vector2(safe.x + 40 * uiScale + i * hs * 1.15f, top + 35 * uiScale), hs, col);
-        }
-
-        // Poder temporal activo con su barra de tiempo
-        if (bird.IsShrunk && State != GameState.GameOver)
-        {
-            float x = safe.x + 20 * uiScale;
-            float y = top + 75 * uiScale;
-            ShadowLabel(new Rect(x, y, 200 * uiScale, 36 * uiScale), "ENCOGIDO", small, new Color(0.85f, 0.7f, 1f));
-            GUI.color = new Color(0f, 0f, 0f, 0.4f);
-            GUI.DrawTexture(new Rect(x, y + 36 * uiScale, 200 * uiScale, 12 * uiScale), Texture2D.whiteTexture);
-            GUI.color = new Color(0.7f, 0.4f, 1f);
-            GUI.DrawTexture(new Rect(x, y + 36 * uiScale, 200 * uiScale * bird.ShrinkRemaining01, 12 * uiScale), Texture2D.whiteTexture);
-            GUI.color = Color.white;
-        }
-
-        if (State == GameState.Playing)
-        {
-            float s = 80 * uiScale;
-            if (GUI.Button(new Rect(safe.xMax - s - 20 * uiScale, top, s, s), "II", button)) Pause();
-        }
-    }
-
-    void DrawPause()
-    {
-        DrawDim();
-        float h = Screen.height;
-        ShadowLabel(new Rect(0, h * 0.22f, Screen.width, 100 * uiScale), "PAUSA", big, Color.white);
-        if (CenterButton(h * 0.42f, "CONTINUAR")) Resume();
-        if (CenterButton(h * 0.42f + 100 * uiScale, "REINICIAR")) StartGame();
-        if (CenterButton(h * 0.42f + 200 * uiScale, "MENÚ PRINCIPAL")) GoToMenu();
-    }
-
-    void DrawGameOver()
-    {
-        DrawDim();
-        float w = Screen.width, h = Screen.height;
-        ShadowLabel(new Rect(0, h * 0.16f, w, 100 * uiScale), "FIN DE LA PARTIDA", big, Color.white);
-        ShadowLabel(new Rect(0, h * 0.16f + 110 * uiScale, w, 60 * uiScale), "Puntuación: " + Score, medium, Color.white);
-        ShadowLabel(new Rect(0, h * 0.16f + 165 * uiScale, w, 60 * uiScale), "Récord: " + HighScore, medium, Color.white);
-        if (newRecord)
-        {
-            float pulse = 1f + Mathf.Sin(Time.unscaledTime * 6f) * 0.06f;
-            var m = GUI.matrix;
-            GUIUtility.ScaleAroundPivot(new Vector2(pulse, pulse), new Vector2(w * 0.5f, h * 0.16f + 250 * uiScale));
-            ShadowLabel(new Rect(0, h * 0.16f + 220 * uiScale, w, 60 * uiScale), "¡NUEVO RÉCORD!", medium, new Color(1f, 0.85f, 0.2f));
-            GUI.matrix = m;
-        }
-        if (CenterButton(h * 0.16f + 300 * uiScale, "REINTENTAR")) StartGame();
-        if (CenterButton(h * 0.16f + 400 * uiScale, "MENÚ PRINCIPAL")) GoToMenu();
-    }
-
-    bool CenterButton(float y, string text)
-    {
-        float bw = 380 * uiScale, bh = 80 * uiScale;
-        return GUI.Button(new Rect((Screen.width - bw) * 0.5f, y, bw, bh), text, button);
-    }
-
-    void DrawDim()
-    {
-        GUI.color = new Color(0f, 0f, 0f, 0.5f);
-        GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
-        GUI.color = Color.white;
-    }
-
-    void ShadowLabel(Rect r, string text, GUIStyle style, Color color)
-    {
-        float o = Mathf.Max(1f, 3f * uiScale);
-        style.normal.textColor = new Color(0f, 0f, 0f, 0.6f);
-        GUI.Label(new Rect(r.x + o, r.y + o, r.width, r.height), text, style);
-        style.normal.textColor = color;
-        GUI.Label(r, text, style);
-    }
-
-    void DrawHeart(Vector2 center, float size, Color color)
-    {
-        var tex = SpriteFactory.Circle.texture;
-        GUI.color = color;
-        float d = size * 0.55f;
-        GUI.DrawTexture(new Rect(center.x - size * 0.5f, center.y - size * 0.35f, d, d), tex);
-        GUI.DrawTexture(new Rect(center.x - size * 0.05f, center.y - size * 0.35f, d, d), tex);
-        var m = GUI.matrix;
-        var pivot = new Vector2(center.x, center.y + size * 0.05f);
-        GUIUtility.RotateAroundPivot(45f, pivot);
-        float sq = size * 0.5f;
-        GUI.DrawTexture(new Rect(pivot.x - sq * 0.5f, pivot.y - sq * 0.5f, sq, sq), Texture2D.whiteTexture);
-        GUI.matrix = m;
-        GUI.color = Color.white;
+#if UNITY_ANDROID || UNITY_IOS
+        if (vibration) Handheld.Vibrate();
+#endif
     }
 }

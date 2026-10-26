@@ -118,3 +118,17 @@ Para probar la jugabilidad se harán sesiones con entre cinco y diez personas qu
 Con los resultados se ajustarán valores como la fuerza del aleteo, la gravedad, la velocidad del escenario, el tamaño del espacio entre tuberías y la frecuencia de aparición de poderes y enemigos. Si el prototipo confirma que el juego es entretenido, se continúa con la producción principal. Si no, se corrigen las mecánicas antes de avanzar.
 
 El prototipo se encuentra en la carpeta SkyBreakerUnity de este repositorio. Todos los valores de ajuste mencionados están reunidos en el archivo SkyBreakerUnity/Assets/Scripts/GameConfig.cs para modificarlos fácilmente después de cada sesión de pruebas.
+
+## 4. Avance del desarrollo (75 %)
+
+En esta etapa se ampliaron los poderes, los enemigos, los escenarios, el arte y el sonido del prototipo. Los cambios respecto a lo planteado arriba son los siguientes.
+
+Se agregó un quinto poder, el escudo, con forma de escudo azul con una cruz dorada, que absorbe el siguiente golpe. Los poderes se desbloquean de forma gradual: la vida extra y el hongo desde el inicio, el cañón a partir de 8 puntos, el fantasma a partir de 12 y el escudo a partir de 18. El primer cañón está garantizado antes de que aparezcan los enemigos, para que el jugador aprenda a disparar.
+
+Se agregó un cuarto enemigo, el cuervo bombardero, que cruza por la parte alta de la pantalla y suelta una bomba cuando Pico pasa por debajo. Cada enemigo tiene una característica distinta. El murciélago mecánico vuela recto y no ataca. La avispa robot vuela en ondas y lanza aguijones apuntando a Pico. El dron vigilante se queda quieto entre las tuberías, dispara láseres horizontales y resiste dos disparos. El cuervo bombardero ataca desde arriba. Antes de cada ataque el enemigo parpadea en rojo y suena una alerta.
+
+La aparición de enemigos se adelantó y se suavizó. El primer enemigo sale a los 10 puntos y cada 5 puntos se suma uno nuevo: el murciélago a los 10, la avispa a los 15, el dron a los 20 y el cuervo a los 25. Cada enemigo nuevo se anuncia en pantalla. Hasta los 30 puntos solo puede haber un enemigo a la vez y siempre hay al menos dos tuberías de descanso entre uno y otro. La probabilidad de aparición empieza baja y sube poco a poco, y los ataques empiezan lentos y se aceleran gradualmente hasta la fase de maestría.
+
+En lugar de un solo mundo con ciclo de día y noche, el juego tiene tres escenarios: el Cielo de las Tuberías, de día y con islas flotantes; la Fábrica Flotante, al atardecer, con siluetas industriales, engranes, humo y chispas; y la Tormenta Nocturna, con estrellas, luna, lluvia y relámpagos. El escenario cambia cada 40 puntos con una transición y un aviso, cada uno tiene su propia música y sus propios colores de tuberías, y el jugador puede elegir el escenario inicial en el menú.
+
+El arte provisional de figuras geométricas se reemplazó por pixel art: Pico tiene tres cuadros de animación de aleteo, y los enemigos, los poderes y los proyectiles tienen sprites propios. Se agregaron partículas, temblor de cámara y textos flotantes de puntos. El sonido se genera por código con estilo chiptune: hay efectos para cada acción y una canción por escenario, cuya capa de percusión aumenta con la dificultad. La interfaz incluye ajustes de volumen, vibración y borrado del récord, además de una pantalla de créditos.

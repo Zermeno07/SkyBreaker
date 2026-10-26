@@ -21,9 +21,15 @@ public static class GameConfig
     public const float StartGap = 3.4f;
     public const float MinGap = 2.3f;
     public const float MaxGapCenterJump = 2.6f;
+    public const int CrackedPipesScore = 25;   // tuberías agrietadas (se rompen con un disparo)
+    public const int GhostPipesScore = 30;     // tuberías fantasma (se pueden traspasar)
+    public const float SpecialPipeChanceMax = 0.3f;
 
     // Dificultad: a partir de esta puntuación empieza la fase de maestría
     public const int MasteryScore = 100;
+
+    // Escenarios: cada cuántos puntos se cambia de escenario durante la partida
+    public const int PointsPerZone = 40;
 
     // Vidas
     public const int StartLives = 1;
@@ -32,20 +38,36 @@ public static class GameConfig
 
     // Poderes
     public const float ShrinkDuration = 8f;
-    public const int FirstPowerUpPipes = 5;
-    public const int PowerUpMinPipes = 8;
-    public const int PowerUpMaxPipes = 12;
-    public const float PowerUpRadius = 0.4f;
+    public const float GhostDuration = 5f;
+    public const int GunShots = 5;
+    public const int MaxAmmo = 10;
+    public const float ShotSpeed = 13f;
+    public const float ShotCooldown = 0.22f;
+    public const int FirstPowerUpPipes = 4;
+    public const int PowerUpMinPipes = 6;
+    public const int PowerUpMaxPipes = 9;
+    public const float PowerUpRadius = 0.45f;
+    // Puntuación a partir de la cual aparece cada poder
+    public const int GunUnlockScore = 8;
+    public const int GhostUnlockScore = 12;
+    public const int ShieldUnlockScore = 18;
 
-    // Enemigos (murciélago mecánico)
-    public const int EnemyStartScore = 20;
-    public const float EnemyChanceStart = 0.3f;
-    public const float EnemyChanceMax = 0.7f;
-    public const float EnemyExtraSpeed = 2.5f;
-    public const float EnemyRadius = 0.32f;
-    public const int EnemyKillPoints = 2;
+    // Enemigos: puntuación a la que aparece cada uno por primera vez.
+    // Murciélago 10, avispa 15, dron 20, cuervo 25.
+    public const int FirstEnemyScore = 10;
+    public const int EnemyUnlockStep = 5;
+    // Probabilidad de que aparezca un enemigo con cada tubería: empieza baja y sube poco a poco.
+    public const float EnemyChanceStart = 0.18f;
+    public const float EnemyChancePerPoint = 0.005f;
+    public const float EnemyChanceMax = 0.5f;
+    // Al ataque de los enemigos se le da más tiempo de espera al principio
+    public const float EnemyAttackSlowStart = 1.5f;
 
     public const string HighScoreKey = "SkyBreaker_HighScore";
+    public const string MusicVolumeKey = "SkyBreaker_Music";
+    public const string SfxVolumeKey = "SkyBreaker_Sfx";
+    public const string VibrationKey = "SkyBreaker_Vibration";
+    public const string StartZoneKey = "SkyBreaker_StartZone";
 
     public static bool CircleOverlapsRect(Vector2 c, float r, float xMin, float xMax, float yMin, float yMax)
     {

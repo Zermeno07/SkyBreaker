@@ -1,20 +1,35 @@
 using UnityEngine;
 
-// Pico: aleteo, gravedad, invulnerabilidad tras un golpe y poder de encogerse.
+public enum TempPower { None, Shrink, Ghost }
+
+// Pico: aleteo, gravedad, animación de pixel art, invulnerabilidad tras un golpe y poderes.
+// Solo puede haber un poder temporal (encoger o fantasma) a la vez; el escudo y el arma se suman aparte.
 public class PlayerBird : MonoBehaviour
 {
     float velocityY;
     float invulnerableTimer;
-    float shrinkTimer;
+    float tempTimer;
+    float tempDuration;
+    float flapAnim;
+    float squash;
+    float hurtFlash;
+    float baseScale = 1f;
+
     Transform visual;
-    Transform wing;
-    SpriteRenderer[] renderers;
+    SpriteRenderer body, gun, shield, shieldRing, glow;
+    Sprite up, mid, down;
+
+    public TempPower Temp { get; private set; }
+    public bool HasShield { get; private set; }
+    public int Ammo { get; private set; }
 
     public bool IsInvulnerable => invulnerableTimer > 0f;
-    public bool IsShrunk => shrinkTimer > 0f;
-    public float ShrinkRemaining01 => shrinkTimer / GameConfig.ShrinkDuration;
+    public bool IsShrunk => Temp == TempPower.Shrink;
+    public bool IsGhost => Temp == TempPower.Ghost;
+    public float TempRemaining01 => tempDuration > 0f ? tempTimer / tempDuration : 0f;
     public float Radius => GameConfig.BirdRadius * (IsShrunk ? 0.5f : 1f);
     public Vector2 Position => transform.position;
+    public Vector2 GunTip => (Vector2)transform.position + (Vector2)(transform.rotation * new Vector3(0.55f * visual.localScale.x, -0.12f * visual.localScale.y, 0f));
 
     public static PlayerBird Create(Transform parent)
     {
@@ -25,18 +40,17 @@ public class PlayerBird : MonoBehaviour
 
     void Awake()
     {
+        up = PixelArt.Get("PicoUp", PixelArt.PicoUp, 18f);
+        mid = PixelArt.Get("PicoMid", PixelArt.PicoMid, 18f);
+        down = PixelArt.Get("PicoDown", PixelArt.PicoDown, 18f);
+
         visual = new GameObject("Visual").transform;
         visual.SetParent(transform, false);
-
-        var blue = new Color(0.2f, 0.55f, 0.95f);
-        SpriteFactory.Shape("Cuerpo", visual, true, blue, Vector2.zero, new Vector2(0.78f, 0.72f), 10);
-        SpriteFactory.Shape("Pecho", visual, true, new Color(0.85f, 0.93f, 1f), new Vector2(0.06f, -0.12f), new Vector2(0.45f, 0.38f), 11);
-        SpriteFactory.Shape("Ojo", visual, true, Color.white, new Vector2(0.16f, 0.13f), new Vector2(0.28f, 0.28f), 12);
-        SpriteFactory.Shape("Pupila", visual, true, Color.black, new Vector2(0.21f, 0.13f), new Vector2(0.12f, 0.14f), 13);
-        SpriteFactory.Shape("Pico", visual, false, new Color(1f, 0.8f, 0.15f), new Vector2(0.42f, -0.03f), new Vector2(0.22f, 0.13f), 12);
-        wing = SpriteFactory.Shape("Ala", visual, true, new Color(0.12f, 0.4f, 0.8f), new Vector2(-0.14f, -0.02f), new Vector2(0.38f, 0.22f), 12).transform;
-
-        renderers = GetComponentsInChildren<SpriteRenderer>();
+        glow = SpriteFactory.Shape("Brillo", visual, SpriteFactory.SoftCircle, new Color(1f, 1f, 1f, 0f), Vector2.zero, Vector2.one * 2f, 9);
+        body = SpriteFactory.Shape("Cuerpo", visual, mid, Color.white, Vector2.zero, Vector2.one, 10);
+        gun = SpriteFactory.Shape("Canon", visual, PixelArt.Get("Gun", PixelArt.Gun, 18f), Color.white, new Vector2(0.05f, -0.28f), Vector2.one, 11);
+        shield = SpriteFactory.Shape("Escudo", visual, SpriteFactory.SoftCircle, new Color(0.4f, 0.8f, 1f, 0.35f), Vector2.zero, Vector2.one * 1.6f, 12);
+        shieldRing = SpriteFactory.Shape("AroEscudo", visual, SpriteFactory.Circle, new Color(0.6f, 0.9f, 1f, 0.25f), Vector2.zero, Vector2.one * 1.25f, 8);
     }
 
     public void ResetBird(float x)
@@ -45,21 +59,31 @@ public class PlayerBird : MonoBehaviour
         transform.rotation = Quaternion.identity;
         velocityY = 0f;
         invulnerableTimer = 0f;
-        shrinkTimer = 0f;
+        Temp = TempPower.None;
+        tempTimer = 0f;
+        HasShield = false;
+        Ammo = 0;
+        hurtFlash = 0f;
+        baseScale = 1f;
+        squash = 0f;
         visual.localScale = Vector3.one;
-        SetVisible(true);
+        UpdateVisuals(0f);
     }
 
     public void Flap()
     {
         velocityY = GameConfig.FlapVelocity;
+        flapAnim = 0.25f;
+        squash = 1f;
     }
 
     public void IdleBob(float x)
     {
         transform.position = new Vector3(x, Mathf.Sin(Time.time * 3f) * 0.3f, 0f);
-        transform.rotation = Quaternion.identity;
-        AnimateWing(10f);
+        transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * 3f + 1f) * 6f);
+        int f = (int)(Time.time * 10f) % 4;
+        body.sprite = f == 0 ? up : f == 2 ? down : mid;
+        UpdateVisuals(Time.deltaTime);
     }
 
     public void TickPhysics(float dt)
@@ -71,28 +95,74 @@ public class PlayerBird : MonoBehaviour
         transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Clamp(velocityY * 4f, -70f, 30f));
 
         if (invulnerableTimer > 0f) invulnerableTimer -= dt;
-        if (shrinkTimer > 0f) shrinkTimer -= dt;
+        if (Temp != TempPower.None)
+        {
+            tempTimer -= dt;
+            if (tempTimer <= 0f) Temp = TempPower.None;
+        }
 
-        float targetScale = IsShrunk ? 0.5f : 1f;
-        float s = Mathf.MoveTowards(visual.localScale.x, targetScale, dt * 3f);
-        visual.localScale = new Vector3(s, s, 1f);
-
-        // Parpadeo durante la invulnerabilidad
-        SetVisible(!IsInvulnerable || ((int)(Time.time * 15f)) % 2 == 0);
-        AnimateWing(velocityY > 0f ? 25f : 8f);
+        // Animación de alas: rápida al aletear, planeo al caer
+        flapAnim -= dt;
+        if (flapAnim > 0f)
+        {
+            float k = flapAnim / 0.25f;
+            body.sprite = k > 0.66f ? down : k > 0.33f ? mid : up;
+        }
+        else
+        {
+            body.sprite = velocityY < -6f ? up : mid;
+        }
+        UpdateVisuals(dt);
     }
 
     // Caída tras perder la última vida
     public void TickDead(float dt)
     {
-        SetVisible(true);
         var p = transform.position;
         float floor = GameConfig.GroundY + Radius;
-        if (p.y <= floor) return;
-        velocityY = Mathf.Max(velocityY + GameConfig.Gravity * dt, GameConfig.MaxFallSpeed);
-        p.y = Mathf.Max(floor, p.y + velocityY * dt);
-        transform.position = p;
-        transform.rotation = Quaternion.Euler(0f, 0f, -80f);
+        if (p.y > floor)
+        {
+            velocityY = Mathf.Max(velocityY + GameConfig.Gravity * dt, GameConfig.MaxFallSpeed);
+            p.y = Mathf.Max(floor, p.y + velocityY * dt);
+            transform.position = p;
+            transform.Rotate(0f, 0f, -540f * dt);
+        }
+        body.sprite = mid;
+        Temp = TempPower.None;
+        HasShield = false;
+        Ammo = 0;
+        invulnerableTimer = 0f;
+        UpdateVisuals(dt);
+    }
+
+    void UpdateVisuals(float dt)
+    {
+        float targetScale = IsShrunk ? 0.5f : 1f;
+        baseScale = Mathf.MoveTowards(baseScale, targetScale, dt * 3f);
+        squash = Mathf.MoveTowards(squash, 0f, dt * 6f);
+        visual.localScale = new Vector3(baseScale * (1f - 0.12f * squash), baseScale * (1f + 0.15f * squash), 1f);
+
+        hurtFlash = Mathf.MoveTowards(hurtFlash, 0f, dt * 3f);
+        var col = Color.Lerp(Color.white, new Color(1f, 0.3f, 0.3f), hurtFlash);
+        if (IsGhost) col.a = 0.45f + 0.15f * Mathf.Sin(Time.time * 12f);
+        bool blinkOff = IsInvulnerable && ((int)(Time.time * 15f)) % 2 == 0;
+        if (blinkOff) col.a *= 0.25f;
+        body.color = col;
+
+        gun.enabled = Ammo > 0;
+        shield.enabled = HasShield;
+        shieldRing.enabled = HasShield;
+        if (HasShield)
+        {
+            float pulse = 1.6f + Mathf.Sin(Time.time * 5f) * 0.08f;
+            shield.transform.localScale = new Vector3(pulse, pulse, 1f);
+        }
+
+        // Brillo de color según el poder activo
+        Color g = new Color(1f, 1f, 1f, 0f);
+        if (IsGhost) g = new Color(0.6f, 0.9f, 1f, 0.45f);
+        else if (IsShrunk) g = new Color(0.8f, 0.5f, 1f, 0.45f);
+        glow.color = Color.Lerp(glow.color, g, Mathf.Clamp01(dt * 8f));
     }
 
     public void BounceOffGround()
@@ -111,25 +181,27 @@ public class PlayerBird : MonoBehaviour
         velocityY = -2f;
     }
 
-    public void StartInvulnerability()
+    public void StartInvulnerability(float time)
     {
-        invulnerableTimer = GameConfig.InvulnerableTime;
+        invulnerableTimer = time;
+        hurtFlash = 1f;
     }
 
-    public void ApplyShrink()
+    public void ApplyTemp(TempPower power, float duration)
     {
-        shrinkTimer = GameConfig.ShrinkDuration;
+        Temp = power;
+        tempTimer = tempDuration = duration;
     }
 
-    void AnimateWing(float speed)
-    {
-        float k = Mathf.Sin(Time.time * speed);
-        wing.localScale = new Vector3(0.38f, 0.22f * (0.4f + 0.6f * Mathf.Abs(k)), 1f);
-        wing.localPosition = new Vector3(-0.14f, -0.02f + k * 0.06f, 0f);
-    }
+    public void GiveShield() { HasShield = true; }
+    public void BreakShield() { HasShield = false; }
 
-    void SetVisible(bool visible)
+    public void AddAmmo(int n) { Ammo = Mathf.Min(GameConfig.MaxAmmo, Ammo + n); }
+
+    public bool UseAmmo()
     {
-        foreach (var r in renderers) r.enabled = visible;
+        if (Ammo <= 0) return false;
+        Ammo--;
+        return true;
     }
 }

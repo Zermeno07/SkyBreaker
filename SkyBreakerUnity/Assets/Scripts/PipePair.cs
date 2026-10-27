@@ -24,6 +24,8 @@ public class PipePair : MonoBehaviour
 
     Half top, bottom;
     bool faded;
+    SpriteRenderer tree;
+    Color tint = Color.white;
 
     public PipeKind Kind { get; private set; }
     public float GapCenter { get; private set; }
@@ -31,7 +33,12 @@ public class PipePair : MonoBehaviour
     public bool Scored { get; set; }
     public float X => transform.position.x;
     public float HalfWidth => (GameConfig.PipeWidth + CapExtra) * 0.5f;
-    public bool IsSolid => Kind != PipeKind.Ghost;
+    public bool IsSolid => Kind != PipeKind.Ghost && (top.alive || bottom.alive);
+    public bool IsSpecial { get; private set; }   // forma parte de un súper poder
+    public bool IsTree => tree.enabled;
+    public bool Broken { get; private set; }
+    public float TreeTop => GameConfig.GroundY + TreeHeight;
+    const float TreeHeight = 3.4f;
 
     public static PipePair Create(Transform parent)
     {
@@ -44,6 +51,12 @@ public class PipePair : MonoBehaviour
     {
         top = MakeHalf("Arriba", true);
         bottom = MakeHalf("Abajo", false);
+        var treeSprite = PixelArt.Get("Tree", PixelArt.Tree, 16f);
+        tree = SpriteFactory.Shape("Arbol", transform, treeSprite, Color.white, Vector2.zero, Vector2.one, 1);
+        float h = treeSprite.bounds.size.y;
+        tree.transform.localScale = Vector3.one * (TreeHeight / h);
+        tree.transform.localPosition = new Vector3(0f, GameConfig.GroundY + TreeHeight * 0.5f, 0f);
+        tree.enabled = false;
     }
 
     Half MakeHalf(string name, bool isTop)
@@ -78,6 +91,10 @@ public class PipePair : MonoBehaviour
         top.root.gameObject.SetActive(true);
         bottom.root.gameObject.SetActive(true);
         faded = false;
+        IsSpecial = false;
+        Broken = false;
+        tree.enabled = false;
+        tint = Color.white;
         ApplyTheme(zone);
         gameObject.SetActive(true);
     }
@@ -116,11 +133,53 @@ public class PipePair : MonoBehaviour
     {
         float a = Kind == PipeKind.Ghost ? 0.5f : 1f;
         if (faded) a = Mathf.Min(a, 0.35f);
+        var c = new Color(tint.r, tint.g, tint.b, a);
         foreach (var h in new[] { top, bottom })
         {
-            h.body.color = new Color(1f, 1f, 1f, a);
-            h.cap.color = new Color(1f, 1f, 1f, a);
+            h.body.color = c;
+            h.cap.color = c;
         }
+        tree.color = new Color(tint.r, tint.g, tint.b, 1f);
+    }
+
+    // Tinte de colores (alucinación del cigarro)
+    public void SetTint(Color c)
+    {
+        tint = c;
+        RefreshAlpha();
+    }
+
+    // Súper poderes: la tubería se vuelve árbol (moto) o desaparece (papitas).
+    public void MakeSpecial(SuperPower sp)
+    {
+        IsSpecial = true;
+        if (sp == SuperPower.Moto)
+        {
+            top.alive = bottom.alive = false;
+            top.root.gameObject.SetActive(false);
+            bottom.root.gameObject.SetActive(false);
+            tree.enabled = true;
+            tree.transform.localRotation = Quaternion.identity;
+        }
+        else if (sp == SuperPower.Chips)
+        {
+            Vanish();
+        }
+    }
+
+    public void Vanish()
+    {
+        top.alive = bottom.alive = false;
+        top.root.gameObject.SetActive(false);
+        bottom.root.gameObject.SetActive(false);
+    }
+
+    // El carro o la moto destrozan la tubería (o el árbol) completa.
+    public void BreakAll()
+    {
+        Broken = true;
+        Vanish();
+        tree.enabled = false;
     }
 
     public void Tick(float dx)

@@ -5,7 +5,8 @@ public enum Sfx
 {
     Flap, Score, PowerLife, PowerGun, PowerShrink, PowerGhost, PowerShield,
     Shoot, Explosion, Hit, ShieldBreak, GameOver, Record, EnemyWarn,
-    Stinger, Laser, BombWhistle, BombBoom, PipeBreak, Click, Zone, Thunder, Charge, Boing
+    Stinger, Laser, BombWhistle, BombBoom, PipeBreak, Click, Zone, Thunder, Charge, Boing,
+    Inhale, Gulp, Engine, Crash, Crunch, Rev, Splash, Smash, SuperEnd
 }
 
 // Sonido chiptune sintetizado por código: efectos de 8 bits y música en bucle para el menú
@@ -66,6 +67,13 @@ public class AudioManager : MonoBehaviour
 
     // 0..1: cuánta percusión se escucha (sube con la puntuación).
     public void SetIntensity(float v) { intensity = Mathf.Clamp01(v); }
+
+    // Velocidad/tono de la música (la alucinación la hace ondular).
+    public void SetMusicPitch(float p)
+    {
+        music.pitch = p;
+        drums.pitch = p;
+    }
 
     // Baja la música temporalmente (pausa, fin de partida).
     public void SetMusicDucked(bool ducked) { musicFade = ducked ? 0.35f : 1f; }
@@ -227,6 +235,17 @@ public class AudioManager : MonoBehaviour
         clips[Sfx.Thunder] = Noise("thunder", 1.6f, 1f, 0.04f, 2.5f);
         clips[Sfx.Charge] = Sweep("charge", 0.5f, 300f, 1200f, 3, 0.1f, 0f);
         clips[Sfx.Boing] = Sweep("boing", 0.16f, 180f, 720f, 2, 0.45f, 1.5f);
+
+        // Súper poderes
+        clips[Sfx.Inhale] = Mix("inhale", Noise("in1", 0.7f, 0.5f, 0.15f, 0.5f), Sweep("in2", 0.7f, 200f, 500f, 3, 0.08f, 0.5f));
+        clips[Sfx.Gulp] = Notes("gulp", new float[] { 45, 0, 43, 0, 41 }, 0.09f, 2, 0.5f, 0.1f);
+        clips[Sfx.Engine] = Sweep("engine", 0.3f, 70f, 85f, 0, 0.18f, 1f, 0.3f);
+        clips[Sfx.Crash] = Mix("crash", Noise("cr1", 0.5f, 1f, 0.5f, 4f), Sweep("cr2", 0.3f, 300f, 60f, 0, 0.35f, 3f));
+        clips[Sfx.Crunch] = Noise("crunch", 0.12f, 0.6f, 0.9f, 6f);
+        clips[Sfx.Rev] = Sweep("rev", 0.6f, 90f, 420f, 0, 0.2f, 0.8f, 0.2f);
+        clips[Sfx.Splash] = Mix("splash", Noise("sp1", 0.6f, 0.7f, 0.7f, 4f), Sweep("sp2", 0.3f, 900f, 300f, 3, 0.15f, 3f));
+        clips[Sfx.Smash] = Mix("smash", Noise("sm1", 0.4f, 0.9f, 0.25f, 4f), Sweep("sm2", 0.25f, 180f, 50f, 2, 0.4f, 3f));
+        clips[Sfx.SuperEnd] = Notes("superend", new float[] { 79, 76, 72 }, 0.08f, 3, 0.25f, 0.3f);
     }
 
     // ------------------------------------------------------------ Música

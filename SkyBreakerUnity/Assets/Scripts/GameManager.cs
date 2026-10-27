@@ -76,6 +76,7 @@ public partial class GameManager : MonoBehaviour
         vibration = PlayerPrefs.GetInt(GameConfig.VibrationKey, 1) == 1;
         character = (CharacterId)Mathf.Clamp(PlayerPrefs.GetInt(GameConfig.CharacterKey, 0), 0, Characters.Count - 1);
         bird.SetCharacter(character);
+        PowerUp.CurrentSuper = Characters.Super(character);
         GoToMenu();
     }
 
@@ -106,6 +107,7 @@ public partial class GameManager : MonoBehaviour
         currentZone = startZone;
         scenery.Build(startZone);
         bird.ResetBird(BirdX);
+        ResetSuper();
         State = GameState.Menu;
         menuScreen = MenuScreen.Main;
         audioManager.SetMusicDucked(false);
@@ -137,6 +139,7 @@ public partial class GameManager : MonoBehaviour
             scenery.Build(startZone);
         }
         bird.ResetBird(BirdX);
+        ResetSuper();
         bird.Flap();
         State = GameState.Playing;
         audioManager.SetMusicDucked(false);
@@ -226,12 +229,13 @@ public partial class GameManager : MonoBehaviour
 
     void TickPlaying(float dt)
     {
-        Speed = Mathf.Lerp(GameConfig.StartSpeed, GameConfig.MaxSpeed, Difficulty01);
+        Speed = Mathf.Lerp(GameConfig.StartSpeed, GameConfig.MaxSpeed, Difficulty01) * SuperSpeedMultiplier;
         float dx = Speed * dt;
         float halfW = HalfWidth;
         shotCooldown -= dt;
 
         bird.TickPhysics(dt);
+        TickSuper(dt);
         scenery.Tick(dt, dx, true);
         fx.Tick(dt, dx);
         TickZoneTransition(dt);
@@ -262,6 +266,7 @@ public partial class GameManager : MonoBehaviour
                 pipe.Scored = true;
                 AddScore(1, null);
                 PlaySfx(Sfx.Score, 0.7f);
+                if (pipe.IsSpecial) OnSpecialPipePassed();
             }
             if (pipe.X < -halfW - GameConfig.PipeWidth * 2f) pipe.gameObject.SetActive(false);
         }
@@ -407,6 +412,14 @@ public partial class GameManager : MonoBehaviour
             return;
         }
 
+        // Con súper poder, los enemigos que toca salen volando
+        if (SuperOn)
+        {
+            foreach (var e in enemies)
+                if (e.gameObject.activeSelf && (e.Position - c).sqrMagnitude < Sqr(r + e.Radius + 0.4f))
+                    DestroyEnemy(e, true);
+        }
+
         if (bird.IsInvulnerable) return;
 
         if (!bird.IsGhost)
@@ -490,6 +503,9 @@ public partial class GameManager : MonoBehaviour
             case PowerUpType.Shield:
                 bird.GiveShield();
                 PlaySfx(Sfx.PowerShield);
+                break;
+            case PowerUpType.Special:
+                ActivateSuper();
                 break;
         }
     }
@@ -606,11 +622,18 @@ public partial class GameManager : MonoBehaviour
         center = Mathf.Clamp(center, lastGapCenter - GameConfig.MaxGapCenterJump, lastGapCenter + GameConfig.MaxGapCenterJump);
         lastGapCenter = center;
 
-        Get(pipes, PipePair.Create).Setup(x, center, gap, ChoosePipeKind(), Theme);
+        var newPipe = Get(pipes, PipePair.Create);
+        newPipe.Setup(x, center, gap, ChoosePipeKind(), Theme);
+        OnPipeSpawned(newPipe);
 
         bool spawnedPowerUp = false;
         pipesUntilPowerUp--;
-        if (pipesUntilPowerUp <= 0)
+        if (ShouldSpawnSpecial())
+        {
+            Get(powerUps, PowerUp.Create).Spawn(PowerUpType.Special, new Vector2(x + GameConfig.PipeSpacing * 0.5f, center));
+            spawnedPowerUp = true;
+        }
+        else if (pipesUntilPowerUp <= 0)
         {
             pipesUntilPowerUp = Random.Range(GameConfig.PowerUpMinPipes, GameConfig.PowerUpMaxPipes + 1);
             Get(powerUps, PowerUp.Create).Spawn(ChoosePowerUp(), new Vector2(x + GameConfig.PipeSpacing * 0.5f, center));
@@ -661,7 +684,7 @@ public partial class GameManager : MonoBehaviour
     // Al principio solo puede haber uno en pantalla y con descanso entre uno y otro.
     void TrySpawnEnemy(float x, bool powerUpHere)
     {
-        if (unlockedEnemies == 0) return;
+        if (unlockedEnemies == 0 || SuperOn) return;
         pipesSinceEnemy++;
 
         int active = 0;

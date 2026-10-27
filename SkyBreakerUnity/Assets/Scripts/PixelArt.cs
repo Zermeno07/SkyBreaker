@@ -384,4 +384,110 @@ public static class PixelArt
         "KgggggKK",
         "KKKKKK..",
     };
+
+    public static readonly string[] Cigar =
+    {
+        ".KKKKKKKKKKKK..",
+        "KOOOWWWWWWWWGRz",
+        "KOOOWWWWWWWWGRZ",
+        ".KKKKKKKKKKKK..",
+    };
+
+    public static readonly string[] Beer =
+    {
+        "..WW.WWW....",
+        ".WWWWWWWW...",
+        "KWWWWWWWWK..",
+        "KYYTYYYYYKKK",
+        "KYTYYYYYYK.K",
+        "KYTYOYYYYK.K",
+        "KYTYYYOYYK.K",
+        "KYYYYYYYYKKK",
+        "KYOYYYYYYK..",
+        "KYYYYYYOYK..",
+        "KOYYYYYYOK..",
+        ".KKKKKKKK...",
+    };
+
+    public static readonly string[] Chips =
+    {
+        ".KKKKKKKKKK.",
+        "KrRrRrRrRrRK",
+        "KRRRRRRRRRRK",
+        "KRWRRRRRRRRK",
+        "KRWRKKKKKRRK",
+        "KRRKYYYYYKRK",
+        "KRRKYzYYzKRK",
+        "KRRKYYYOYKRK",
+        "KRRRKYYYKRRK",
+        "KRRRRKKKRRRK",
+        "KRWRRRRRRRRK",
+        "KRRRRRRRRRrK",
+        "KrRrRrRrRrRK",
+        ".KKKKKKKKKK.",
+    };
+
+    public static readonly string[] Car =
+    {
+        "..............................",
+        "........KKKKKKKKKKK...........",
+        ".......KsssKsssssssK..........",
+        "......KssssKssssssssK.........",
+        ".....KsssssKsssssssssK........",
+        "KKKKKKKKKKKKKKKKKKKKKKKKKKK...",
+        "KRRRRRRRRRRRRRRRRRRRRRRRRRRKK.",
+        "KRWWRRRRRRRKRRRRRRRRRRRRRRRYYK",
+        "KRRRRKKKRRRKRRRRRRRRRRKKKRRRRK",
+        "KrrrKAAAKrrKrrrrrrrrrKAAAKrrrK",
+        "KKKKAAGAAKKKKKKKKKKKKAAGAAKKK.",
+        "...KAGKGAK..........KAGKGAK...",
+        "...KAAGAAK..........KAAGAAK...",
+        "....KAAAK............KAAAK....",
+        ".....KKK..............KKK.....",
+    };
+
+    public static readonly string[] Moto =
+    {
+        "..........................",
+        "..................KKK.....",
+        ".................KGGK.....",
+        "................KGK.......",
+        "......KKKKKKK..KRK........",
+        ".....KRRRRRRRKKRRK........",
+        "..KKKRRWWRRRRRRRRKK.......",
+        ".KDDDKRRRRRRRRRRRRRK......",
+        "KDDKKKKKKKKKKKKKKKKKKK....",
+        "..KAAAK...........KAAAK...",
+        ".KAAGAAK.........KAAGAAK..",
+        ".KAGKGAK.........KAGKGAK..",
+        ".KAAGAAK.........KAAGAAK..",
+        "..KAAAK...........KAAAK...",
+        "...KKK.............KKK....",
+    };
+
+    public static readonly string[] Tree =
+    {
+        "......KKKK......",
+        "....KKEEEEKK....",
+        "...KEEHHEEEEK...",
+        "..KEEHHEEEEEEK..",
+        ".KEEHEEEEEEEEeK.",
+        ".KEEEEEEEEEEEeK.",
+        "KEEEEEEEEEEEEEeK",
+        "KEHEEEEEEEEEEeeK",
+        "KEEEEEEEEEEEEeeK",
+        ".KEEEEEEEEEEeeK.",
+        ".KeEEEEEEEEEeeK.",
+        "..KeeEEEEEeeeK..",
+        "...KKeeeeeeKK...",
+        ".....KKNNKK.....",
+        "......KNnK......",
+        "......KNnK......",
+        "......KNnK......",
+        "......KNnK......",
+        "......KNnK......",
+        ".....KNNnnK.....",
+        "....KNNNnnnK....",
+        "....KKKKKKKK....",
+    };
 }

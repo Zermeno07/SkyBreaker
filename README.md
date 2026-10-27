@@ -10,7 +10,13 @@ Proyecto de la materia Creación de videojuegos (grupo IDGS10D11).
 
 Ya funciona:
 
-- 3 personajes a elegir en el menú: Pico (pájaro en pixel art), Wicho L Pop's y Jorge Nitales (cabezas voladoras).
+- 5 personajes a elegir en el menú: Pico (pájaro en pixel art) y cuatro cabezas voladoras, cada una con un súper poder propio que dura 10 tuberías y durante el cual no recibe daño:
+  - Wicho L Pop's, cigarro: pasa a toda velocidad, el fondo se derrite y cambia de color (alucinación) y le sale humo de la boca.
+  - Jorge Nitales, cerveza: se sube a un carro y choca contra las tuberías, rompiéndolas.
+  - Justo Prime, papitas: las tuberías desaparecen y aparece una laguna.
+  - Paleteado, moto: las tuberías se vuelven árboles y los destroza a su paso.
+
+  El súper poder aparece como un orbe naranja, a partir de 4 puntos y luego cada 16 a 24 tuberías.
 - Pico en pixel art con animación de aleteo, inclinación, estiramiento al aletear, parpadeo al recibir daño y aspecto distinto según el poder activo.
 - Vuelo con aleteo (toque, clic o ESPACIO) y gravedad; tuberías infinitas con pooling y textura sombreada.
 - Tuberías especiales: agrietadas (se rompen con un disparo, desde 25 puntos) y fantasma (se traspasan, desde 30 puntos).
@@ -93,5 +99,6 @@ Para Android necesitas instalar el módulo "Android Build Support" desde Unity H
 - `AudioManager.cs`: efectos de sonido y música sintetizados.
 - `Fx.cs`: partículas.
 - `PixelArt.cs`: sprites de pixel art (Pico, enemigos, poderes, proyectiles).
-- `HeadArt.cs`, `WichoArt.cs`, `JorgeArt.cs`: imágenes de los personajes cabeza.
+- `GameSuper.cs`: súper poderes de los personajes.
+- `HeadArt.cs`, `WichoArt.cs`, `JorgeArt.cs`, `JustoArt.cs`, `PaleteadoArt.cs`: imágenes de los personajes cabeza.
 - `SpriteFactory.cs`: texturas generadas (nubes, montañas, fábrica, engranes, tuberías, etc.).

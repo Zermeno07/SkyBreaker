@@ -6,7 +6,8 @@ public enum PowerUpType
     Gun,       // Cañón: 5 disparos
     Shrink,    // Hongo: Pico se encoge a la mitad durante 8 segundos
     Ghost,     // Fantasma: atraviesa tuberías durante 5 segundos
-    Shield     // Escudo: absorbe el siguiente golpe
+    Shield,    // Escudo: absorbe el siguiente golpe
+    Special    // Súper poder del personaje (cigarro, cerveza, papitas o moto)
 }
 
 // Orbe flotante con un poder. Se activa al tocarlo.
@@ -15,6 +16,9 @@ public class PowerUp : MonoBehaviour
     SpriteRenderer icon, glow, ring;
     float baseY;
     float phase;
+
+    // Súper poder del personaje elegido; define el ícono del poder especial
+    public static SuperPower CurrentSuper = SuperPower.None;
 
     public PowerUpType Type { get; private set; }
     public Vector2 Position => transform.position;
@@ -27,6 +31,7 @@ public class PowerUp : MonoBehaviour
             case PowerUpType.Gun: return "¡Cañón! +" + GameConfig.GunShots + " disparos";
             case PowerUpType.Shrink: return "¡Encogido!";
             case PowerUpType.Ghost: return "¡Modo fantasma!";
+            case PowerUpType.Special: return Characters.SuperName(CurrentSuper);
             default: return "¡Escudo!";
         }
     }
@@ -39,6 +44,7 @@ public class PowerUp : MonoBehaviour
             case PowerUpType.Gun: return new Color(1f, 0.8f, 0.3f);
             case PowerUpType.Shrink: return new Color(0.8f, 0.5f, 1f);
             case PowerUpType.Ghost: return new Color(0.6f, 0.95f, 1f);
+            case PowerUpType.Special: return new Color(1f, 0.6f, 0.15f);
             default: return new Color(0.4f, 0.75f, 1f);
         }
     }
@@ -51,6 +57,7 @@ public class PowerUp : MonoBehaviour
             case PowerUpType.Gun: return PixelArt.Get("Cannon", PixelArt.Cannon, 16f);
             case PowerUpType.Shrink: return PixelArt.Get("Mushroom", PixelArt.Mushroom, 16f);
             case PowerUpType.Ghost: return PixelArt.Get("Ghost", PixelArt.Ghost, 16f);
+            case PowerUpType.Special: return Characters.SuperIcon(CurrentSuper);
             default: return PixelArt.Get("Shield", PixelArt.Shield, 16f);
         }
     }
@@ -88,7 +95,7 @@ public class PowerUp : MonoBehaviour
         p.x -= dx;
         p.y = baseY + Mathf.Sin(Time.time * 4f + phase) * 0.15f;
         transform.position = p;
-        float s = 1.6f + Mathf.Sin(Time.time * 6f + phase) * 0.2f;
+        float s = (Type == PowerUpType.Special ? 2.1f : 1.6f) + Mathf.Sin(Time.time * 6f + phase) * 0.2f;
         glow.transform.localScale = new Vector3(s, s, 1f);
         icon.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * 3f + phase) * 10f);
     }

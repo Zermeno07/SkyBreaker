@@ -126,6 +126,7 @@ public partial class GameManager
         Rect safe = Screen.safeArea;
         safe.y = Screen.height - safe.yMax; // safeArea usa origen abajo; IMGUI usa origen arriba
 
+        DrawTripOverlay();
         DrawPopups();
 
         // Destellos: relámpagos y cambio de escenario
@@ -291,6 +292,7 @@ public partial class GameManager
         character = (CharacterId)(((int)character + dir + Characters.Count) % Characters.Count);
         PlayerPrefs.SetInt(GameConfig.CharacterKey, (int)character);
         bird.SetCharacter(character);
+        PowerUp.CurrentSuper = Characters.Super(character);
         PlaySfx(Characters.IsHead(character) ? Sfx.Boing : Sfx.Flap);
     }
 
@@ -371,7 +373,8 @@ public partial class GameManager
             "Creación de videojuegos · Grupo IDGS10D11",
             "",
             "Diseño, programación y arte: [Nombre del equipo]",
-            "Personajes: Pico, Wicho L Pop's y Jorge Nitales",
+            "Personajes: Pico, Wicho L Pop's, Jorge Nitales,",
+            "Justo Prime y Paleteado",
             "Motor: Unity · Lenguaje: C#",
             "Arte en pixel art y sonido chiptune",
             "generados por código para el prototipo",
@@ -400,6 +403,22 @@ public partial class GameManager
 
         OutlineLabel(new Rect(0, top, w, 100 * uiScale), Score.ToString(), big, Color.white, 5f);
         OutlineLabel(new Rect(0, top + 88 * uiScale, w, 40 * uiScale), "Récord: " + HighScore, tiny, Color.white, 2f);
+
+        // Súper poder activo: ícono y tuberías restantes
+        if (SuperOn)
+        {
+            var icon0 = Characters.SuperIcon(superActive);
+            float isz = 56 * uiScale;
+            float pulse = 1f + Mathf.Sin(Time.unscaledTime * 8f) * 0.05f;
+            var rowR = new Rect(w * 0.5f - 210 * uiScale, top + 130 * uiScale, 420 * uiScale, isz);
+            DrawPanel(rowR);
+            GUI.DrawTexture(new Rect(rowR.x + 10 * uiScale, rowR.y, isz, isz), icon0.texture, ScaleMode.ScaleToFit);
+            var m = GUI.matrix;
+            GUIUtility.ScaleAroundPivot(new Vector2(pulse, pulse), rowR.center);
+            OutlineLabel(new Rect(rowR.x + isz + 10 * uiScale, rowR.y, rowR.width - isz - 20 * uiScale, isz),
+                Characters.SuperShortName(superActive) + "  ·  quedan " + superPipesLeft, small, new Color(1f, 0.7f, 0.25f), 2f);
+            GUI.matrix = m;
+        }
 
         // Vidas (corazones de pixel art)
         float hs = 54 * uiScale;
@@ -460,6 +479,24 @@ public partial class GameManager
                 OutlineLabel(new Rect(shootRect.x, shootRect.yMax - 55 * uiScale, shootRect.width, 40 * uiScale), "DISPARAR", tiny, Color.white, 2f);
             }
         }
+    }
+
+    // Capa de colores que ondulan durante la alucinación del cigarro
+    void DrawTripOverlay()
+    {
+        float trip = scenery.Trip;
+        if (trip <= 0.01f || Event.current.type != EventType.Repaint) return;
+        int stripes = 7;
+        float sw = Screen.width / (float)stripes;
+        for (int i = 0; i < stripes; i++)
+        {
+            var hue = Color.HSVToRGB(Mathf.Repeat(Time.time * 0.25f + i / (float)stripes, 1f), 0.8f, 1f);
+            hue.a = 0.12f * trip;
+            GUI.color = hue;
+            float wave = Mathf.Sin(Time.time * 2f + i) * 40f * uiScale * trip;
+            GUI.DrawTexture(new Rect(i * sw + wave, 0, sw + 2, Screen.height), Texture2D.whiteTexture);
+        }
+        GUI.color = Color.white;
     }
 
     void DrawBanner(Rect safe)

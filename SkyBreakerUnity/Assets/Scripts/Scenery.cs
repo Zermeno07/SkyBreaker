@@ -65,6 +65,9 @@ public class Scenery
         public float baseAlpha;
         public bool screenSpace;  // se mueve con la pantalla (lluvia)
         public float wrapTop;     // para elementos que suben o bajan
+        public Vector3 baseScale;
+        public float lastWobble;
+        public float seed;
     }
 
     readonly Transform parent;
@@ -73,6 +76,17 @@ public class Scenery
     SpriteRenderer sky;
     readonly List<Item> items = new List<Item>();
     float lightningTimer;
+
+    // Alucinación (cigarro): 0 = normal, 1 = el fondo se derrite, se estira y cambia de color
+    public float Trip { get; set; }
+
+    // Laguna (papitas)
+    public bool Lagoon { get; set; }
+    Transform lagoonRoot;
+    readonly List<Item> lagoonItems = new List<Item>();
+    readonly List<SpriteRenderer> lagoonRenderers = new List<SpriteRenderer>();
+    readonly List<float> lagoonAlpha = new List<float>();
+    float lagoonT;
 
     public ZoneTheme Theme { get; private set; }
     public float Flash { get; private set; }   // destello de relámpago (0..1)
@@ -289,7 +303,7 @@ public class Scenery
 
     Item Add(SpriteRenderer sr, float factor)
     {
-        var it = new Item { t = sr.transform, sr = sr, factor = factor, baseAlpha = sr.color.a };
+        var it = new Item { t = sr.transform, sr = sr, factor = factor, baseAlpha = sr.color.a, baseScale = sr.transform.localScale, seed = Random.value * 10f };
         items.Add(it);
         return it;
     }
@@ -320,8 +334,19 @@ public class Scenery
                 if (p.x < -Span * 0.5f) p.x += Span;
                 if (it.wrapTop > 0f && p.y > it.wrapTop) p.y -= it.wrapTop * 2f;
             }
+            // Alucinación: ondula, se derrite y se estira
+            if (!it.screenSpace && (Trip > 0f || it.lastWobble != 0f))
+            {
+                float wob = Mathf.Sin(Time.time * 2.3f + it.seed + p.x * 0.4f) * 0.6f * Trip;
+                p.y += wob - it.lastWobble;
+                it.lastWobble = wob;
+                var bs = it.baseScale;
+                it.t.localScale = new Vector3(
+                    bs.x * (1f + 0.25f * Mathf.Sin(Time.time * 1.7f + it.seed) * Trip),
+                    bs.y * (1f + 0.5f * Mathf.Sin(Time.time * 1.3f + it.seed * 2f) * Trip), 1f);
+            }
             it.t.localPosition = p;
-            if (it.spin != 0f) it.t.Rotate(0f, 0f, it.spin * dt);
+            if (it.spin != 0f) it.t.Rotate(0f, 0f, it.spin * dt * (1f + Trip * 4f));
             if (it.twinkle > 0f)
             {
                 var c = it.sr.color;
@@ -329,6 +354,16 @@ public class Scenery
                 it.sr.color = c;
             }
         }
+
+        // Cielo de colores durante la alucinación
+        if (Trip > 0f)
+        {
+            var hue = Color.HSVToRGB((Time.time * 0.2f) % 1f, 0.65f, 1f);
+            sky.color = Color.Lerp(Color.white, hue, Trip * 0.8f);
+        }
+        else sky.color = Color.white;
+
+        TickLagoon(dt, dx);
 
         // Relámpagos en la tormenta
         Flash = Mathf.MoveTowards(Flash, 0f, dt * 2.5f);
@@ -341,6 +376,71 @@ public class Scenery
                 Flash = 1f;
                 Thunder?.Invoke();
             }
+        }
+    }
+
+    // ------------------------------------------------------------ Laguna (papitas)
+
+    void BuildLagoon()
+    {
+        lagoonRoot = new GameObject("Laguna").transform;
+        lagoonRoot.SetParent(parent, false);
+        float top = GameConfig.GroundY + 2.3f;
+        var light = new Color(0.45f, 0.8f, 1f, 1f);
+        LagoonShape(SpriteFactory.Shape("Agua", lagoonRoot, SpriteFactory.Gradient(new Color(0.25f, 0.65f, 0.95f), new Color(0.08f, 0.3f, 0.6f)), Color.white,
+            new Vector2(0f, (top + GameConfig.GroundY - 1f) * 0.5f), new Vector2(120f, top - GameConfig.GroundY + 1f), 19), 0.95f, 0f);
+        LagoonShape(SpriteFactory.Shape("Orilla", lagoonRoot, SpriteFactory.Square, light, new Vector2(0f, top), new Vector2(120f, 0.08f), 19), 1f, 0f);
+        for (int i = 0; i < 40; i++)
+        {
+            float x = -Span / 2f + i * Span / 40f;
+            var w = SpriteFactory.Shape("Ola", lagoonRoot, SpriteFactory.Square, light, new Vector2(x, Random.Range(GameConfig.GroundY + 0.2f, top - 0.2f)), new Vector2(Random.Range(0.3f, 0.8f), 0.05f), 19);
+            var it = LagoonShape(w, 0.7f, 1f);
+            it.twinkle = Random.Range(1.5f, 4f);
+        }
+        for (int i = 0; i < 9; i++)
+        {
+            float x = -Span / 2f + (i + Random.value) * Span / 9f;
+            float y = Random.Range(GameConfig.GroundY + 0.5f, top - 0.3f);
+            var pad = SpriteFactory.Shape("Lirio", lagoonRoot, SpriteFactory.Circle, ZoneTheme.Hex(0x38b764), new Vector2(x, y), new Vector2(0.7f, 0.22f), 19);
+            LagoonShape(pad, 1f, 1f);
+            if (i % 2 == 0)
+                LagoonShape(SpriteFactory.Shape("Flor", lagoonRoot, SpriteFactory.Circle, ZoneTheme.Hex(0xff8fb1), new Vector2(x + 0.1f, y + 0.08f), new Vector2(0.18f, 0.14f), 19), 1f, 1f);
+        }
+    }
+
+    Item LagoonShape(SpriteRenderer sr, float alpha, float factor)
+    {
+        var it = new Item { t = sr.transform, sr = sr, factor = factor, baseAlpha = alpha };
+        lagoonItems.Add(it);
+        lagoonRenderers.Add(sr);
+        lagoonAlpha.Add(alpha);
+        return it;
+    }
+
+    void TickLagoon(float dt, float dx)
+    {
+        lagoonT = Mathf.MoveTowards(lagoonT, Lagoon ? 1f : 0f, dt * 1.5f);
+        if (lagoonRoot == null)
+        {
+            if (lagoonT <= 0f) return;
+            BuildLagoon();
+        }
+        lagoonRoot.gameObject.SetActive(lagoonT > 0f);
+        if (lagoonT <= 0f) return;
+        // La laguna sube desde el suelo
+        lagoonRoot.localPosition = new Vector3(0f, -(1f - lagoonT) * 2.5f, 0f);
+        for (int i = 0; i < lagoonItems.Count; i++)
+        {
+            var it = lagoonItems[i];
+            var p = it.t.localPosition;
+            p.x -= dx * it.factor;
+            if (it.factor > 0f && p.x < -Span * 0.5f) p.x += Span;
+            it.t.localPosition = p;
+            float a = lagoonAlpha[i] * lagoonT;
+            if (it.twinkle > 0f) a *= 0.4f + 0.6f * Mathf.Abs(Mathf.Sin(Time.time * it.twinkle + p.x));
+            var c = lagoonRenderers[i].color;
+            c.a = a;
+            lagoonRenderers[i].color = c;
         }
     }
 }

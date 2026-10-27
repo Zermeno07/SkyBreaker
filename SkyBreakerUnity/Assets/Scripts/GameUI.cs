@@ -202,7 +202,7 @@ public partial class GameManager
                 else
                 {
                     bird.Flap();
-                    if (character == CharacterId.Wicho) PlaySfx(Sfx.Boing, 0.4f, Random.Range(0.95f, 1.1f));
+                    if (Characters.IsHead(character)) PlaySfx(Sfx.Boing, 0.4f, Random.Range(0.95f, 1.1f));
                     else PlaySfx(Sfx.Flap, 0.5f, Random.Range(0.95f, 1.08f));
                     fx.Burst(bird.Position + new Vector2(-0.3f, -0.1f), 2, new Color(1f, 1f, 1f, 0.6f), 0.8f, 0.3f, 0.12f, 0f, true, true, 9);
                 }
@@ -291,7 +291,7 @@ public partial class GameManager
         character = (CharacterId)(((int)character + dir + Characters.Count) % Characters.Count);
         PlayerPrefs.SetInt(GameConfig.CharacterKey, (int)character);
         bird.SetCharacter(character);
-        PlaySfx(character == CharacterId.Wicho ? Sfx.Boing : Sfx.Flap);
+        PlaySfx(Characters.IsHead(character) ? Sfx.Boing : Sfx.Flap);
     }
 
     void DrawSettings(System.Action back)
@@ -371,7 +371,7 @@ public partial class GameManager
             "Creación de videojuegos · Grupo IDGS10D11",
             "",
             "Diseño, programación y arte: [Nombre del equipo]",
-            "Personajes: Pico y Wicho L Pop's",
+            "Personajes: Pico, Wicho L Pop's y Jorge Nitales",
             "Motor: Unity · Lenguaje: C#",
             "Arte en pixel art y sonido chiptune",
             "generados por código para el prototipo",

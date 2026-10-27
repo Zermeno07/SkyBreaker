@@ -1,29 +1,9 @@
 using UnityEngine;
 
 // Imagen de la cabeza de Wicho L Pop's (personaje seleccionable).
-// Se guarda como píxeles RGBA de 128x128 en Base64 para no depender de importar archivos.
 public static class WichoArt
 {
-    const int Size = 128;
-
-    static Sprite head;
-
-    // Tamaño en unidades del mundo del sprite completo (incluye el borde blanco).
-    public static Sprite Head(float unitsWide = 1.4f)
-    {
-        if (head != null) return head;
-        var bytes = System.Convert.FromBase64String(string.Concat(Data));
-        var px = new Color32[Size * Size];
-        for (int i = 0; i < px.Length; i++)
-            px[i] = new Color32(bytes[i * 4], bytes[i * 4 + 1], bytes[i * 4 + 2], bytes[i * 4 + 3]);
-        var tex = new Texture2D(Size, Size, TextureFormat.RGBA32, false);
-        tex.filterMode = FilterMode.Bilinear;
-        tex.wrapMode = TextureWrapMode.Clamp;
-        tex.SetPixels32(px);
-        tex.Apply();
-        head = Sprite.Create(tex, new Rect(0, 0, Size, Size), new Vector2(0.5f, 0.5f), Size / unitsWide);
-        return head;
-    }
+    public static Sprite Head() => HeadArt.Decode("WichoArt", Data);
 
     static readonly string[] Data =
     {

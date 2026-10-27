@@ -10,7 +10,7 @@ Proyecto de la materia Creación de videojuegos (grupo IDGS10D11).
 
 Ya funciona:
 
-- 2 personajes a elegir en el menú: Pico (pájaro en pixel art) y Wicho L Pop's (cabeza voladora).
+- 3 personajes a elegir en el menú: Pico (pájaro en pixel art), Wicho L Pop's y Jorge Nitales (cabezas voladoras).
 - Pico en pixel art con animación de aleteo, inclinación, estiramiento al aletear, parpadeo al recibir daño y aspecto distinto según el poder activo.
 - Vuelo con aleteo (toque, clic o ESPACIO) y gravedad; tuberías infinitas con pooling y textura sombreada.
 - Tuberías especiales: agrietadas (se rompen con un disparo, desde 25 puntos) y fantasma (se traspasan, desde 30 puntos).
@@ -93,5 +93,5 @@ Para Android necesitas instalar el módulo "Android Build Support" desde Unity H
 - `AudioManager.cs`: efectos de sonido y música sintetizados.
 - `Fx.cs`: partículas.
 - `PixelArt.cs`: sprites de pixel art (Pico, enemigos, poderes, proyectiles).
-- `WichoArt.cs`: imagen del personaje Wicho L Pop's.
+- `HeadArt.cs`, `WichoArt.cs`, `JorgeArt.cs`: imágenes de los personajes cabeza.
 - `SpriteFactory.cs`: texturas generadas (nubes, montañas, fábrica, engranes, tuberías, etc.).

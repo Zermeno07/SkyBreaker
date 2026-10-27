@@ -135,4 +135,4 @@ El arte provisional de figuras geométricas se reemplazó por pixel art: Pico ti
 
 Después de las primeras pruebas se ajustó la dificultad. Las tuberías estaban demasiado juntas, así que la distancia horizontal entre ellas pasó de 4.2 a 6.5 unidades y el hueco para pasar se amplió. También se facilitó el combate: el cañón da 8 disparos con asistencia de puntería, el dron vigilante cae con un solo disparo, los enemigos y sus proyectiles son más lentos, y sus zonas de choque son un poco más chicas que su dibujo. Hasta los 40 puntos solo puede haber un enemigo en pantalla y después, como máximo, dos.
 
-Se agregó la selección de personaje en el menú principal. Además de Pico, el jugador puede elegir a Wicho L Pop's, una cabeza voladora con un borde blanco tipo estampa y un sonido de aleteo propio. Ambos personajes se controlan igual y pueden usar todos los poderes.
+Se agregó la selección de personaje en el menú principal. Además de Pico, el jugador puede elegir a Wicho L Pop's o a Jorge Nitales, cabezas voladoras con un borde blanco tipo estampa y un sonido de aleteo propio. Ambos personajes se controlan igual y pueden usar todos los poderes.

@@ -2,20 +2,42 @@ using UnityEngine;
 
 public enum TempPower { None, Shrink, Ghost }
 
-public enum CharacterId { Pico = 0, Wicho = 1 }
+public enum CharacterId { Pico = 0, Wicho = 1, Jorge = 2 }
 
+// Personajes seleccionables. Pico es pixel art; los demás son cabezas (fotos recortadas).
+// Para agregar otro: crear su script de imagen (como JorgeArt.cs) y sumarlo aquí.
 public static class Characters
 {
-    public const int Count = 2;
+    public const int Count = 3;
 
-    public static string Name(CharacterId id) => id == CharacterId.Wicho ? "Wicho L Pop's" : "Pico";
+    public static string Name(CharacterId id)
+    {
+        switch (id)
+        {
+            case CharacterId.Wicho: return "Wicho L Pop's";
+            case CharacterId.Jorge: return "Jorge Nitales";
+            default: return "Pico";
+        }
+    }
+
+    public static bool IsHead(CharacterId id) => id != CharacterId.Pico;
+
+    public static Sprite Head(CharacterId id)
+    {
+        switch (id)
+        {
+            case CharacterId.Wicho: return WichoArt.Head();
+            case CharacterId.Jorge: return JorgeArt.Head();
+            default: return null;
+        }
+    }
 
     public static Sprite Preview(CharacterId id) =>
-        id == CharacterId.Wicho ? WichoArt.Head() : PixelArt.Get("PicoMid", PixelArt.PicoMid, 18f);
+        IsHead(id) ? Head(id) : PixelArt.Get("PicoMid", PixelArt.PicoMid, 18f);
 
-    // Colores de las partículas al recibir daño (plumas para Pico, estrellas para Wicho)
-    public static Color HurtColorA(CharacterId id) => id == CharacterId.Wicho ? new Color(1f, 0.85f, 0.3f) : ZoneTheme.Hex(0x3b8bd8);
-    public static Color HurtColorB(CharacterId id) => id == CharacterId.Wicho ? new Color(1f, 1f, 1f) : ZoneTheme.Hex(0x7ccaff);
+    // Colores de las partículas al recibir daño (plumas para Pico, estrellas para las cabezas)
+    public static Color HurtColorA(CharacterId id) => IsHead(id) ? new Color(1f, 0.85f, 0.3f) : ZoneTheme.Hex(0x3b8bd8);
+    public static Color HurtColorB(CharacterId id) => IsHead(id) ? new Color(1f, 1f, 1f) : ZoneTheme.Hex(0x7ccaff);
 }
 
 // Pico: aleteo, gravedad, animación de pixel art, invulnerabilidad tras un golpe y poderes.
@@ -44,7 +66,7 @@ public class PlayerBird : MonoBehaviour
     public bool IsShrunk => Temp == TempPower.Shrink;
     public bool IsGhost => Temp == TempPower.Ghost;
     public float TempRemaining01 => tempDuration > 0f ? tempTimer / tempDuration : 0f;
-    public float Radius => GameConfig.BirdRadius * (Character == CharacterId.Wicho ? 1.12f : 1f) * (IsShrunk ? 0.5f : 1f);
+    public float Radius => GameConfig.BirdRadius * (Characters.IsHead(Character) ? 1.12f : 1f) * (IsShrunk ? 0.5f : 1f);
     public Vector2 Position => transform.position;
     public Vector2 GunTip => (Vector2)transform.position + (Vector2)(transform.rotation * new Vector3(0.55f * visual.localScale.x, -0.12f * visual.localScale.y, 0f));
 
@@ -73,15 +95,15 @@ public class PlayerBird : MonoBehaviour
     public void SetCharacter(CharacterId id)
     {
         Character = id;
-        bool wicho = id == CharacterId.Wicho;
-        body.sprite = wicho ? WichoArt.Head() : mid;
-        gun.transform.localPosition = wicho ? new Vector3(0.2f, -0.5f, 0f) : new Vector3(0.05f, -0.28f, 0f);
+        bool head = Characters.IsHead(id);
+        body.sprite = head ? Characters.Head(id) : mid;
+        gun.transform.localPosition = head ? new Vector3(0.2f, -0.5f, 0f) : new Vector3(0.05f, -0.28f, 0f);
     }
 
-    // Pico usa sus 3 cuadros de aleteo; Wicho siempre muestra la misma imagen.
+    // Pico usa sus 3 cuadros de aleteo; las cabezas siempre muestran la misma imagen.
     void SetFrame(Sprite frame)
     {
-        body.sprite = Character == CharacterId.Wicho ? WichoArt.Head() : frame;
+        body.sprite = Characters.IsHead(Character) ? Characters.Head(Character) : frame;
     }
 
     public void ResetBird(float x)

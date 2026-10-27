@@ -10,23 +10,25 @@ Proyecto de la materia Creación de videojuegos (grupo IDGS10D11).
 
 Ya funciona:
 
+- 2 personajes a elegir en el menú: Pico (pájaro en pixel art) y Wicho L Pop's (cabeza voladora).
 - Pico en pixel art con animación de aleteo, inclinación, estiramiento al aletear, parpadeo al recibir daño y aspecto distinto según el poder activo.
 - Vuelo con aleteo (toque, clic o ESPACIO) y gravedad; tuberías infinitas con pooling y textura sombreada.
 - Tuberías especiales: agrietadas (se rompen con un disparo, desde 25 puntos) y fantasma (se traspasan, desde 30 puntos).
 - Vidas (empieza con 1, máximo 3) con invulnerabilidad de 2 segundos, puntuación y récord guardado.
 - 5 poderes:
   - Corazón: +1 vida.
-  - Cañón: 5 disparos (desde 8 puntos; el primero está garantizado antes de que salgan los enemigos).
+  - Cañón: 8 disparos con asistencia de puntería (desde 8 puntos; el primero está garantizado antes de que salgan los enemigos).
   - Hongo: encoge a Pico durante 8 s.
   - Fantasma: atraviesa tuberías durante 5 s (desde 12 puntos).
   - Escudo: absorbe un golpe (desde 18 puntos).
 - 4 enemigos con comportamientos y ataques distintos, que aparecen poco a poco:
   - 10 puntos, Murciélago mecánico: vuela recto, sin ataque.
   - 15 puntos, Avispa robot: vuela en ondas y lanza aguijones apuntando a Pico.
-  - 20 puntos, Dron vigilante: se queda quieto, dispara láseres y resiste 2 disparos.
+  - 20 puntos, Dron vigilante: se queda quieto y dispara láseres.
   - 25 puntos, Cuervo bombardero: cruza por arriba y suelta una bomba.
 
-  Cada enemigo nuevo se anuncia en pantalla. Al principio solo puede haber uno a la vez, con descanso entre uno y otro, y sus ataques son lentos y avisan antes (parpadean en rojo y suenan). La frecuencia sube poco a poco con la puntuación.
+  Cada enemigo nuevo se anuncia en pantalla. Hasta los 40 puntos solo puede haber uno a la vez (después, máximo 2), con descanso entre uno y otro. Sus ataques son lentos y avisan antes (parpadean en rojo y suenan), y la frecuencia sube poco a poco con la puntuación.
+- Tuberías bien separadas (6.5 unidades entre una y otra) y con huecos amplios. Los choques con enemigos y sus ataques tienen margen a favor del jugador.
 - 3 escenarios con fondo en parallax y su propia música: Cielo de las Tuberías, Fábrica Flotante (engranes, humo y chispas) y Tormenta Nocturna (estrellas, luna, lluvia y relámpagos). El escenario cambia cada 40 puntos, y el inicial se elige en el menú.
 - Sonido chiptune generado por código: más de 20 efectos y una canción por escenario más la del menú. La percusión aumenta con la dificultad.
 - Partículas (explosiones, plumas, destellos, escombros), temblor de cámara y textos flotantes de puntos.
@@ -91,4 +93,5 @@ Para Android necesitas instalar el módulo "Android Build Support" desde Unity H
 - `AudioManager.cs`: efectos de sonido y música sintetizados.
 - `Fx.cs`: partículas.
 - `PixelArt.cs`: sprites de pixel art (Pico, enemigos, poderes, proyectiles).
+- `WichoArt.cs`: imagen del personaje Wicho L Pop's.
 - `SpriteFactory.cs`: texturas generadas (nubes, montañas, fábrica, engranes, tuberías, etc.).

@@ -202,7 +202,8 @@ public partial class GameManager
                 else
                 {
                     bird.Flap();
-                    PlaySfx(Sfx.Flap, 0.5f, Random.Range(0.95f, 1.08f));
+                    if (character == CharacterId.Wicho) PlaySfx(Sfx.Boing, 0.4f, Random.Range(0.95f, 1.1f));
+                    else PlaySfx(Sfx.Flap, 0.5f, Random.Range(0.95f, 1.08f));
                     fx.Burst(bird.Position + new Vector2(-0.3f, -0.1f), 2, new Color(1f, 1f, 1f, 0.6f), 0.8f, 0.3f, 0.12f, 0f, true, true, 9);
                 }
                 break;
@@ -220,34 +221,59 @@ public partial class GameManager
 
     void DrawMenu(Rect safe)
     {
-        float w = Screen.width, h = Screen.height;
-        float bob = Mathf.Sin(Time.unscaledTime * 2f) * 8f * uiScale;
-        OutlineLabel(new Rect(0, h * 0.08f + bob, w, 120 * uiScale), "SKY BREAKER", big, ZoneTheme.Hex(0xffd23f), 5f);
-        OutlineLabel(new Rect(0, h * 0.08f + 100 * uiScale + bob, w, 50 * uiScale), "Prototipo jugable · avance 75%", tiny, Color.white, 2f);
-        OutlineLabel(new Rect(0, h * 0.28f, w, 50 * uiScale), "Récord: " + HighScore, medium, Color.white, 3f);
+        float w = Screen.width, h = Screen.height, u = uiScale;
+        float top = safe.y + 20 * u;
+        float bob = Mathf.Sin(Time.unscaledTime * 2f) * 8f * u;
+        OutlineLabel(new Rect(0, top + bob, w, 120 * u), "SKY BREAKER", big, ZoneTheme.Hex(0xffd23f), 5f);
+        OutlineLabel(new Rect(0, top + 95 * u + bob, w, 45 * u), "Prototipo jugable · avance 75%", tiny, Color.white, 2f);
+        OutlineLabel(new Rect(0, top + 140 * u, w, 50 * u), "Récord: " + HighScore, medium, Color.white, 3f);
 
-        float y = h * 0.38f;
-        if (CenterButton(y, "JUGAR", 1.15f)) { PlaySfx(Sfx.Click); StartGame(); }
+        float y = top + 200 * u;
+        if (CenterButton(y, "JUGAR", 1.1f)) { PlaySfx(Sfx.Click); StartGame(); }
 
-        // Selector de escenario
-        y += 115 * uiScale;
-        float bw = 70 * uiScale, rowW = 560 * uiScale, x0 = (w - rowW) * 0.5f;
-        if (Button(new Rect(x0, y, bw, 70 * uiScale), "<")) ChangeStartZone(-1);
-        var nameRect = new Rect(x0 + bw, y, rowW - bw * 2, 70 * uiScale);
-        DrawPanel(new Rect(nameRect.x + 8 * uiScale, nameRect.y, nameRect.width - 16 * uiScale, nameRect.height));
-        OutlineLabel(new Rect(nameRect.x, nameRect.y - 12 * uiScale, nameRect.width, nameRect.height), "Escenario inicial", tiny, new Color(0.8f, 0.85f, 1f), 1f);
-        OutlineLabel(new Rect(nameRect.x, nameRect.y + 12 * uiScale, nameRect.width, nameRect.height), ZoneTheme.All[(int)startZone].name, small, ZoneTheme.All[(int)startZone].uiAccent, 2f);
-        if (Button(new Rect(x0 + rowW - bw, y, bw, 70 * uiScale), ">")) ChangeStartZone(1);
+        // Selectores de personaje y de escenario: lado a lado si caben, si no uno debajo del otro
+        y += 110 * u;
+        float selW = 470 * u, selH = 90 * u, gapX = 24 * u;
+        bool sideBySide = selW * 2 + gapX <= w - 20 * u;
+        var charRect = sideBySide ? new Rect(w * 0.5f - selW - gapX * 0.5f, y, selW, selH) : new Rect((w - selW) * 0.5f, y, selW, selH);
+        var zoneRect = sideBySide ? new Rect(w * 0.5f + gapX * 0.5f, y, selW, selH) : new Rect((w - selW) * 0.5f, y + selH + 15 * u, selW, selH);
 
-        y += 95 * uiScale;
-        if (CenterButton(y, "AJUSTES", 0.85f)) { PlaySfx(Sfx.Click); menuScreen = MenuScreen.Settings; confirmReset = false; }
-        y += 90 * uiScale;
-        if (CenterButton(y, "CRÉDITOS", 0.85f)) { PlaySfx(Sfx.Click); menuScreen = MenuScreen.Credits; }
+        int dc = Selector(charRect, "Personaje", Characters.Name(character), Color.white, Characters.Preview(character).texture);
+        if (dc != 0) ChangeCharacter(dc);
+        var zone = ZoneTheme.All[(int)startZone];
+        int dz = Selector(zoneRect, "Escenario inicial", zone.name, zone.uiAccent, null);
+        if (dz != 0) ChangeStartZone(dz);
 
-        OutlineLabel(new Rect(0, h - safe.y - 110 * uiScale, w, 40 * uiScale),
+        y = Mathf.Max(charRect.yMax, zoneRect.yMax) + 20 * u;
+        float bw = 260 * u, bh = 70 * u;
+        if (Button(new Rect(w * 0.5f - bw - 10 * u, y, bw, bh), "AJUSTES")) { PlaySfx(Sfx.Click); menuScreen = MenuScreen.Settings; confirmReset = false; }
+        if (Button(new Rect(w * 0.5f + 10 * u, y, bw, bh), "CRÉDITOS")) { PlaySfx(Sfx.Click); menuScreen = MenuScreen.Credits; }
+
+        OutlineLabel(new Rect(0, h - safe.y - 90 * u, w, 40 * u),
             "Aletear: toque, clic o ESPACIO   ·   Disparar: X, F o clic derecho", tiny, Color.white, 2f);
-        OutlineLabel(new Rect(0, h - safe.y - 72 * uiScale, w, 40 * uiScale),
+        OutlineLabel(new Rect(0, h - safe.y - 55 * u, w, 40 * u),
             "Pausa: ESC o P", tiny, Color.white, 2f);
+    }
+
+    // Selector con flechas a los lados. Devuelve -1, 0 o 1 según la flecha presionada.
+    int Selector(Rect r, string label, string value, Color valueColor, Texture icon)
+    {
+        float aw = 64 * uiScale;
+        int result = 0;
+        if (Button(new Rect(r.x, r.y + (r.height - aw) * 0.5f, aw, aw), "<")) result = -1;
+        if (Button(new Rect(r.xMax - aw, r.y + (r.height - aw) * 0.5f, aw, aw), ">")) result = 1;
+        var mid = new Rect(r.x + aw + 6 * uiScale, r.y, r.width - aw * 2 - 12 * uiScale, r.height);
+        DrawPanel(mid);
+        var text = mid;
+        if (icon != null)
+        {
+            float isz = r.height - 16 * uiScale;
+            GUI.DrawTexture(new Rect(mid.x + 8 * uiScale, mid.y + 8 * uiScale, isz, isz), icon, ScaleMode.ScaleToFit);
+            text = new Rect(mid.x + isz + 8 * uiScale, mid.y, mid.width - isz - 12 * uiScale, mid.height);
+        }
+        OutlineLabel(new Rect(text.x, text.y + 4 * uiScale, text.width, text.height * 0.4f), label, tiny, new Color(0.8f, 0.85f, 1f), 1f);
+        OutlineLabel(new Rect(text.x, text.y + text.height * 0.38f, text.width, text.height * 0.55f), value, small, valueColor, 2f);
+        return result;
     }
 
     void ChangeStartZone(int dir)
@@ -257,6 +283,15 @@ public partial class GameManager
         PlayerPrefs.SetInt(GameConfig.StartZoneKey, (int)startZone);
         currentZone = startZone;
         scenery.Build(startZone);
+    }
+
+    void ChangeCharacter(int dir)
+    {
+        PlaySfx(Sfx.Click);
+        character = (CharacterId)(((int)character + dir + Characters.Count) % Characters.Count);
+        PlayerPrefs.SetInt(GameConfig.CharacterKey, (int)character);
+        bird.SetCharacter(character);
+        PlaySfx(character == CharacterId.Wicho ? Sfx.Boing : Sfx.Flap);
     }
 
     void DrawSettings(System.Action back)
@@ -336,6 +371,7 @@ public partial class GameManager
             "Creación de videojuegos · Grupo IDGS10D11",
             "",
             "Diseño, programación y arte: [Nombre del equipo]",
+            "Personajes: Pico y Wicho L Pop's",
             "Motor: Unity · Lenguaje: C#",
             "Arte en pixel art y sonido chiptune",
             "generados por código para el prototipo",

@@ -42,6 +42,7 @@ public partial class GameManager : MonoBehaviour
 
     // Escenarios
     ZoneId startZone;
+    CharacterId character;
     ZoneId currentZone;
     float zoneTransition;     // > 0 mientras hay un cambio de escenario en curso
     ZoneId pendingZone;
@@ -73,6 +74,8 @@ public partial class GameManager : MonoBehaviour
         HighScore = PlayerPrefs.GetInt(GameConfig.HighScoreKey, 0);
         startZone = (ZoneId)Mathf.Clamp(PlayerPrefs.GetInt(GameConfig.StartZoneKey, 0), 0, 2);
         vibration = PlayerPrefs.GetInt(GameConfig.VibrationKey, 1) == 1;
+        character = (CharacterId)Mathf.Clamp(PlayerPrefs.GetInt(GameConfig.CharacterKey, 0), 0, Characters.Count - 1);
+        bird.SetCharacter(character);
         GoToMenu();
     }
 
@@ -312,7 +315,7 @@ public partial class GameManager : MonoBehaviour
             }
 
             if (State == GameState.Playing && !bird.IsInvulnerable &&
-                (pos - bird.Position).sqrMagnitude < Sqr(bird.Radius + pr.Radius))
+                (pos - bird.Position).sqrMagnitude < Sqr(bird.Radius + pr.Radius * GameConfig.EnemyHitboxScale))
             {
                 pr.gameObject.SetActive(false);
                 if (pr.Kind == ProjectileKind.Bomb) fx.Explosion(pos, 0.8f);
@@ -327,7 +330,7 @@ public partial class GameManager : MonoBehaviour
         foreach (var e in enemies)
         {
             if (!e.gameObject.activeSelf) continue;
-            if ((e.Position - pos).sqrMagnitude < Sqr(e.Radius + shot.Radius))
+            if ((e.Position - pos).sqrMagnitude < Sqr(e.Radius + shot.Radius + GameConfig.ShotHitBonus))
             {
                 shot.gameObject.SetActive(false);
                 if (e.TakeDamage()) DestroyEnemy(e, true);
@@ -420,7 +423,7 @@ public partial class GameManager : MonoBehaviour
 
         foreach (var e in enemies)
         {
-            if (e.gameObject.activeSelf && (e.Position - c).sqrMagnitude < Sqr(r + e.Radius))
+            if (e.gameObject.activeSelf && (e.Position - c).sqrMagnitude < Sqr(r + e.Radius * GameConfig.EnemyHitboxScale))
             {
                 DestroyEnemy(e, false);
                 Hurt();
@@ -447,8 +450,8 @@ public partial class GameManager : MonoBehaviour
         Shake(0.6f);
         Vibrate();
         PlaySfx(Sfx.Hit);
-        fx.Burst(bird.Position, 10, ZoneTheme.Hex(0x3b8bd8), 3f, 0.9f, 0.15f, -3f);
-        fx.Burst(bird.Position, 6, ZoneTheme.Hex(0x7ccaff), 2.5f, 0.9f, 0.12f, -3f);
+        fx.Burst(bird.Position, 10, Characters.HurtColorA(character), 3f, 0.9f, 0.15f, -3f);
+        fx.Burst(bird.Position, 6, Characters.HurtColorB(character), 2.5f, 0.9f, 0.12f, -3f);
         if (Lives <= 0)
         {
             EndGame();
@@ -501,9 +504,30 @@ public partial class GameManager : MonoBehaviour
         }
         shotCooldown = GameConfig.ShotCooldown;
         var tip = bird.GunTip;
-        Get(projectiles, Projectile.Create).Launch(ProjectileKind.PlayerShot, tip, new Vector2(GameConfig.ShotSpeed, 0f));
+        Get(projectiles, Projectile.Create).Launch(ProjectileKind.PlayerShot, tip, AimDirection(tip) * GameConfig.ShotSpeed);
         fx.Burst(tip, 5, new Color(1f, 0.9f, 0.4f), 2f, 0.15f, 0.1f);
         PlaySfx(Sfx.Shoot);
+    }
+
+    // Asistencia de puntería: si hay un enemigo adelante dentro de un cono, el disparo va hacia él.
+    Vector2 AimDirection(Vector2 from)
+    {
+        Vector2 dir = new Vector2(1f, 0f);
+        float best = float.MaxValue;
+        foreach (var e in enemies)
+        {
+            if (!e.gameObject.activeSelf) continue;
+            Vector2 to = e.Position - from;
+            if (to.x < 0.5f || to.x > HalfWidth * 2f) continue;
+            float angle = Mathf.Abs(Mathf.Atan2(to.y, to.x) * Mathf.Rad2Deg);
+            float dist = to.sqrMagnitude;
+            if (angle <= GameConfig.ShotAimAssistDegrees && dist < best)
+            {
+                best = dist;
+                dir = to.normalized;
+            }
+        }
+        return dir;
     }
 
     public void SpawnEnemyProjectile(ProjectileKind kind, Vector2 pos, Vector2 vel)
@@ -642,7 +666,7 @@ public partial class GameManager : MonoBehaviour
 
         int active = 0;
         foreach (var e in enemies) if (e.gameObject.activeSelf) active++;
-        int maxActive = Score < 30 ? 1 : Score < 60 ? 2 : 3;
+        int maxActive = Score < 40 ? 1 : GameConfig.MaxEnemiesOnScreen;
         int minGap = Score < 30 ? 2 : 1;
         float chance = Mathf.Min(GameConfig.EnemyChanceMax,
             GameConfig.EnemyChanceStart + (Score - GameConfig.FirstEnemyScore) * GameConfig.EnemyChancePerPoint);

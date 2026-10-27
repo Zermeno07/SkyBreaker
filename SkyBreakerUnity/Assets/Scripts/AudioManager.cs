@@ -5,7 +5,7 @@ public enum Sfx
 {
     Flap, Score, PowerLife, PowerGun, PowerShrink, PowerGhost, PowerShield,
     Shoot, Explosion, Hit, ShieldBreak, GameOver, Record, EnemyWarn,
-    Stinger, Laser, BombWhistle, BombBoom, PipeBreak, Click, Zone, Thunder, Charge
+    Stinger, Laser, BombWhistle, BombBoom, PipeBreak, Click, Zone, Thunder, Charge, Boing
 }
 
 // Sonido chiptune sintetizado por código: efectos de 8 bits y música en bucle para el menú
@@ -226,6 +226,7 @@ public class AudioManager : MonoBehaviour
         clips[Sfx.Zone] = Notes("zone", new float[] { 72, 79, 84, 88, 91 }, 0.09f, 3, 0.3f, 0.6f);
         clips[Sfx.Thunder] = Noise("thunder", 1.6f, 1f, 0.04f, 2.5f);
         clips[Sfx.Charge] = Sweep("charge", 0.5f, 300f, 1200f, 3, 0.1f, 0f);
+        clips[Sfx.Boing] = Sweep("boing", 0.16f, 180f, 720f, 2, 0.45f, 1.5f);
     }
 
     // ------------------------------------------------------------ Música

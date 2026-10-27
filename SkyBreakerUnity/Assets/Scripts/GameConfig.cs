@@ -13,13 +13,13 @@ public static class GameConfig
     public const float GroundY = -4.3f;
     public const float CeilingY = 4.6f;
     public const float StartSpeed = 3f;
-    public const float MaxSpeed = 5.5f;
+    public const float MaxSpeed = 5f;
 
     // Tuberías
     public const float PipeWidth = 1.2f;
-    public const float PipeSpacing = 4.2f;
-    public const float StartGap = 3.4f;
-    public const float MinGap = 2.3f;
+    public const float PipeSpacing = 6.5f;   // distancia horizontal entre tuberías
+    public const float StartGap = 3.8f;      // altura del hueco al inicio
+    public const float MinGap = 2.7f;        // altura mínima del hueco
     public const float MaxGapCenterJump = 2.6f;
     public const int CrackedPipesScore = 25;   // tuberías agrietadas (se rompen con un disparo)
     public const int GhostPipesScore = 30;     // tuberías fantasma (se pueden traspasar)
@@ -39,10 +39,12 @@ public static class GameConfig
     // Poderes
     public const float ShrinkDuration = 8f;
     public const float GhostDuration = 5f;
-    public const int GunShots = 5;
-    public const int MaxAmmo = 10;
+    public const int GunShots = 8;
+    public const int MaxAmmo = 16;
     public const float ShotSpeed = 13f;
     public const float ShotCooldown = 0.22f;
+    public const float ShotAimAssistDegrees = 35f; // el disparo se orienta solo hacia el enemigo más cercano
+    public const float ShotHitBonus = 0.2f;        // margen extra para acertar a un enemigo
     public const int FirstPowerUpPipes = 4;
     public const int PowerUpMinPipes = 6;
     public const int PowerUpMaxPipes = 9;
@@ -62,12 +64,16 @@ public static class GameConfig
     public const float EnemyChanceMax = 0.5f;
     // Al ataque de los enemigos se le da más tiempo de espera al principio
     public const float EnemyAttackSlowStart = 1.5f;
+    // Margen a favor del jugador: las colisiones con enemigos y sus ataques usan un radio menor
+    public const float EnemyHitboxScale = 0.75f;
+    public const int MaxEnemiesOnScreen = 2;
 
     public const string HighScoreKey = "SkyBreaker_HighScore";
     public const string MusicVolumeKey = "SkyBreaker_Music";
     public const string SfxVolumeKey = "SkyBreaker_Sfx";
     public const string VibrationKey = "SkyBreaker_Vibration";
     public const string StartZoneKey = "SkyBreaker_StartZone";
+    public const string CharacterKey = "SkyBreaker_Character";
 
     public static bool CircleOverlapsRect(Vector2 c, float r, float xMin, float xMax, float yMin, float yMax)
     {

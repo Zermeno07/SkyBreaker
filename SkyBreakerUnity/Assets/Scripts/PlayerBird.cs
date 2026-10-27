@@ -2,6 +2,22 @@ using UnityEngine;
 
 public enum TempPower { None, Shrink, Ghost }
 
+public enum CharacterId { Pico = 0, Wicho = 1 }
+
+public static class Characters
+{
+    public const int Count = 2;
+
+    public static string Name(CharacterId id) => id == CharacterId.Wicho ? "Wicho L Pop's" : "Pico";
+
+    public static Sprite Preview(CharacterId id) =>
+        id == CharacterId.Wicho ? WichoArt.Head() : PixelArt.Get("PicoMid", PixelArt.PicoMid, 18f);
+
+    // Colores de las partículas al recibir daño (plumas para Pico, estrellas para Wicho)
+    public static Color HurtColorA(CharacterId id) => id == CharacterId.Wicho ? new Color(1f, 0.85f, 0.3f) : ZoneTheme.Hex(0x3b8bd8);
+    public static Color HurtColorB(CharacterId id) => id == CharacterId.Wicho ? new Color(1f, 1f, 1f) : ZoneTheme.Hex(0x7ccaff);
+}
+
 // Pico: aleteo, gravedad, animación de pixel art, invulnerabilidad tras un golpe y poderes.
 // Solo puede haber un poder temporal (encoger o fantasma) a la vez; el escudo y el arma se suman aparte.
 public class PlayerBird : MonoBehaviour
@@ -19,6 +35,7 @@ public class PlayerBird : MonoBehaviour
     SpriteRenderer body, gun, shield, shieldRing, glow;
     Sprite up, mid, down;
 
+    public CharacterId Character { get; private set; }
     public TempPower Temp { get; private set; }
     public bool HasShield { get; private set; }
     public int Ammo { get; private set; }
@@ -27,7 +44,7 @@ public class PlayerBird : MonoBehaviour
     public bool IsShrunk => Temp == TempPower.Shrink;
     public bool IsGhost => Temp == TempPower.Ghost;
     public float TempRemaining01 => tempDuration > 0f ? tempTimer / tempDuration : 0f;
-    public float Radius => GameConfig.BirdRadius * (IsShrunk ? 0.5f : 1f);
+    public float Radius => GameConfig.BirdRadius * (Character == CharacterId.Wicho ? 1.12f : 1f) * (IsShrunk ? 0.5f : 1f);
     public Vector2 Position => transform.position;
     public Vector2 GunTip => (Vector2)transform.position + (Vector2)(transform.rotation * new Vector3(0.55f * visual.localScale.x, -0.12f * visual.localScale.y, 0f));
 
@@ -51,6 +68,20 @@ public class PlayerBird : MonoBehaviour
         gun = SpriteFactory.Shape("Canon", visual, PixelArt.Get("Gun", PixelArt.Gun, 18f), Color.white, new Vector2(0.05f, -0.28f), Vector2.one, 11);
         shield = SpriteFactory.Shape("Escudo", visual, SpriteFactory.SoftCircle, new Color(0.4f, 0.8f, 1f, 0.35f), Vector2.zero, Vector2.one * 1.6f, 12);
         shieldRing = SpriteFactory.Shape("AroEscudo", visual, SpriteFactory.Circle, new Color(0.6f, 0.9f, 1f, 0.25f), Vector2.zero, Vector2.one * 1.25f, 8);
+    }
+
+    public void SetCharacter(CharacterId id)
+    {
+        Character = id;
+        bool wicho = id == CharacterId.Wicho;
+        body.sprite = wicho ? WichoArt.Head() : mid;
+        gun.transform.localPosition = wicho ? new Vector3(0.2f, -0.5f, 0f) : new Vector3(0.05f, -0.28f, 0f);
+    }
+
+    // Pico usa sus 3 cuadros de aleteo; Wicho siempre muestra la misma imagen.
+    void SetFrame(Sprite frame)
+    {
+        body.sprite = Character == CharacterId.Wicho ? WichoArt.Head() : frame;
     }
 
     public void ResetBird(float x)
@@ -82,7 +113,7 @@ public class PlayerBird : MonoBehaviour
         transform.position = new Vector3(x, Mathf.Sin(Time.time * 3f) * 0.3f, 0f);
         transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * 3f + 1f) * 6f);
         int f = (int)(Time.time * 10f) % 4;
-        body.sprite = f == 0 ? up : f == 2 ? down : mid;
+        SetFrame(f == 0 ? up : f == 2 ? down : mid);
         UpdateVisuals(Time.deltaTime);
     }
 
@@ -106,11 +137,11 @@ public class PlayerBird : MonoBehaviour
         if (flapAnim > 0f)
         {
             float k = flapAnim / 0.25f;
-            body.sprite = k > 0.66f ? down : k > 0.33f ? mid : up;
+            SetFrame(k > 0.66f ? down : k > 0.33f ? mid : up);
         }
         else
         {
-            body.sprite = velocityY < -6f ? up : mid;
+            SetFrame(velocityY < -6f ? up : mid);
         }
         UpdateVisuals(dt);
     }
@@ -127,7 +158,7 @@ public class PlayerBird : MonoBehaviour
             transform.position = p;
             transform.Rotate(0f, 0f, -540f * dt);
         }
-        body.sprite = mid;
+        SetFrame(mid);
         Temp = TempPower.None;
         HasShield = false;
         Ammo = 0;

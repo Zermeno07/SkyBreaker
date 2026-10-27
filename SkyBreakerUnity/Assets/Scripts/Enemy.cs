@@ -4,7 +4,7 @@ public enum EnemyType
 {
     Bat,   // Murciélago mecánico: vuela en línea recta, más rápido que el escenario. Sin ataque.
     Wasp,  // Avispa robot: vuela en ondas y lanza aguijones apuntando a Pico.
-    Drone, // Dron vigilante: se queda quieto entre tuberías y dispara láseres horizontales. Resiste 2 disparos.
+    Drone, // Dron vigilante: se queda quieto entre tuberías y dispara láseres horizontales.
     Crow   // Cuervo bombardero: cruza por arriba y suelta una bomba cuando Pico pasa por debajo.
 }
 
@@ -105,7 +105,7 @@ public class Enemy : MonoBehaviour
             case EnemyType.Drone:
                 frameA = PixelArt.Get("DroneA", PixelArt.DroneA, 16f);
                 frameB = PixelArt.Get("DroneB", PixelArt.DroneB, 16f);
-                Hp = 2;
+                Hp = 1;
                 attackTimer = 1.2f * attackSlow;
                 break;
             case EnemyType.Crow:
@@ -128,19 +128,19 @@ public class Enemy : MonoBehaviour
         switch (Type)
         {
             case EnemyType.Bat:
-                p.x -= dx + 1.6f * dt;
+                p.x -= dx + 1.2f * dt;
                 p.y = baseY + Mathf.Sin(t * 5f) * 0.12f;
                 animSpeed = 10f;
                 break;
 
             case EnemyType.Wasp:
                 p.x -= dx + 1f * dt;
-                p.y = baseY + Mathf.Sin(t * 2.2f) * 1.1f;
+                p.y = baseY + Mathf.Sin(t * 1.8f) * 0.8f;
                 animSpeed = 20f;
-                if (onScreen && p.x > bird.x + 2f) UpdateAttack(dt, 0.5f, 2.8f, gm, () =>
+                if (onScreen && p.x > bird.x + 2f) UpdateAttack(dt, 0.6f, 3.2f, gm, () =>
                 {
                     Vector2 dir = (bird - (Vector2)transform.position).normalized;
-                    gm.SpawnEnemyProjectile(ProjectileKind.Stinger, (Vector2)transform.position + dir * 0.4f, dir * 4.5f);
+                    gm.SpawnEnemyProjectile(ProjectileKind.Stinger, (Vector2)transform.position + dir * 0.4f, dir * 3.5f);
                     gm.PlaySfx(Sfx.Stinger);
                 });
                 else telegraph = 0f;
@@ -150,9 +150,9 @@ public class Enemy : MonoBehaviour
                 p.x -= dx;
                 p.y = baseY + Mathf.Sin(t * 1.5f) * 0.25f;
                 animSpeed = 16f;
-                if (onScreen && p.x > bird.x + 1.5f) UpdateAttack(dt, 0.7f, 2.6f, gm, () =>
+                if (onScreen && p.x > bird.x + 1.5f) UpdateAttack(dt, 0.8f, 3f, gm, () =>
                 {
-                    gm.SpawnEnemyProjectile(ProjectileKind.Laser, (Vector2)transform.position + new Vector2(-0.5f, 0f), new Vector2(-5.5f, 0f));
+                    gm.SpawnEnemyProjectile(ProjectileKind.Laser, (Vector2)transform.position + new Vector2(-0.5f, 0f), new Vector2(-4.5f, 0f));
                     gm.PlaySfx(Sfx.Laser);
                 });
                 else telegraph = 0f;

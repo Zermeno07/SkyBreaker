@@ -67,6 +67,8 @@ public static class GameConfig
     // Margen a favor del jugador: las colisiones con enemigos y sus ataques usan un radio menor
     public const float EnemyHitboxScale = 0.75f;
     public const int MaxEnemiesOnScreen = 2;
+    // Gravedad de las bombas del cuervo (más baja = caen más lento y dan más tiempo de reaccionar)
+    public const float BombGravity = 5f;
 
     public const string HighScoreKey = "SkyBreaker_HighScore";
     public const string MusicVolumeKey = "SkyBreaker_Music";

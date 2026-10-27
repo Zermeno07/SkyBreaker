@@ -22,6 +22,7 @@ public class Enemy : MonoBehaviour
     float hitFlash;
     bool attacked;
     float attackSlow;
+    int attacksLeft;
 
     public EnemyType Type { get; private set; }
     public int Hp { get; private set; }
@@ -79,10 +80,12 @@ public class Enemy : MonoBehaviour
     }
 
     // attackSlow: multiplicador del tiempo entre ataques (más alto = más fácil)
-    public void Spawn(EnemyType type, Vector2 pos, float attackSlow)
+    // maxAttacks: cuántas veces puede atacar en su pasada (menos al principio para que sea justo)
+    public void Spawn(EnemyType type, Vector2 pos, float attackSlow, int maxAttacks = 2)
     {
         Type = type;
         this.attackSlow = attackSlow;
+        attacksLeft = maxAttacks;
         transform.position = pos;
         baseY = pos.y;
         t = Random.value * 3f;
@@ -165,7 +168,7 @@ public class Enemy : MonoBehaviour
                 // Suelta la bomba calculando cuánto tarda en caer hasta la altura de Pico
                 float ahead = p.x - bird.x;
                 float screenSpeed = (dt > 0f ? dx / dt : 0f) + 1.2f;
-                float fallTime = Mathf.Sqrt(2f * Mathf.Max(0.3f, p.y - bird.y) / 7f);
+                float fallTime = Mathf.Sqrt(2f * Mathf.Max(0.3f, p.y - bird.y) / GameConfig.BombGravity);
                 if (!attacked && onScreen && ahead > 0.5f && ahead <= fallTime * screenSpeed)
                 {
                     attacked = true;
@@ -187,6 +190,7 @@ public class Enemy : MonoBehaviour
 
     void UpdateAttack(float dt, float warnTime, float interval, GameManager gm, System.Action fire)
     {
+        if (attacksLeft <= 0) { telegraph = 0f; return; }
         attackTimer -= dt;
         if (attackTimer <= warnTime && telegraph <= 0f)
         {
@@ -197,6 +201,7 @@ public class Enemy : MonoBehaviour
         if (attackTimer <= 0f)
         {
             fire();
+            attacksLeft--;
             telegraph = 0f;
             attackTimer = interval * attackSlow * Random.Range(0.85f, 1.15f);
         }

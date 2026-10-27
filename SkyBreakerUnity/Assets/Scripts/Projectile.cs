@@ -53,7 +53,7 @@ public class Projectile : MonoBehaviour
         Kind = kind;
         transform.position = pos;
         velocity = vel;
-        gravity = kind == ProjectileKind.Bomb ? -7f : 0f;
+        gravity = kind == ProjectileKind.Bomb ? -GameConfig.BombGravity : 0f;
         switch (kind)
         {
             case ProjectileKind.PlayerShot:

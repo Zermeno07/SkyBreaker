@@ -718,7 +718,7 @@ public partial class GameManager : MonoBehaviour
         }
         float attackSlow = Mathf.Lerp(GameConfig.EnemyAttackSlowStart, 1f,
             Mathf.InverseLerp(GameConfig.FirstEnemyScore, GameConfig.MasteryScore, Score));
-        Get(enemies, Enemy.Create).Spawn(type, new Vector2(x, y), attackSlow);
+        Get(enemies, Enemy.Create).Spawn(type, new Vector2(x, y), attackSlow, Score < 40 ? 1 : 2);
     }
 
     // Pooling: reutiliza un objeto inactivo o crea uno nuevo.

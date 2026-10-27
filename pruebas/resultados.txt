@@ -1,0 +1,26 @@
+[Aprobada] P01 Inicio del juego: Estado = Menu; objetos creados = 128
+[Aprobada] P02 Aleteo: Altura de 0.00 a 0.94 en 10 cuadros
+[Aprobada] P03 Gravedad y choque con el suelo: Fin de partida a los 0.95 s; vidas = 0
+[Aprobada] P04 Separación de tuberías: Distancia promedio = 6.50 (3 medidas)
+[Aprobada] P05 Puntuación al pasar tuberías: Puntos = 3; tuberías marcadas como pasadas = 2
+[Aprobada] P06 Récord guardado: Puntos = 3; récord guardado = 3
+[Aprobada] P07 Dificultad progresiva: Velocidad 3.0 → 5.0; hueco generado a 100 puntos = 2.70
+[Aprobada] P08 Vida extra: Vidas después del primer corazón = 2; con 3 vidas = 3
+[Aprobada] P09 Invulnerabilidad tras un golpe: Vidas = 1; invulnerable al instante = True; a los 2.1 s = False
+[Aprobada] P10 Escudo: Vidas = 1; escudo = False
+[Aprobada] P11 Disparo del cañón: Enemigo activo = False; puntos = 2; disparos restantes = 7
+[Aprobada] P12 Tubería agrietada: Mitad superior sigue sólida = False; puntos = 1
+[Aprobada] P13 Poder fantasma: Vidas = 1; estado = Playing
+[Aprobada] P14 Aparición gradual de enemigos: Primera aparición: Murciélago mecánico a los 10, Avispa robot a los 15, Dron vigilante a los 20, Cuervo bombardero a los 28
+[Aprobada] P15 Máximo de enemigos al inicio: Máximo simultáneo antes de 40 puntos = 1
+[Aprobada] P16 Cambio de escenario: Cambió a los 40 puntos (de Cielo a Fabrica)
+[Aprobada] P17 Súper poder: cigarro (Wicho L Pop's): Tuberías del súper poder = 10; duró 9.7 s; puntos ganados = 10; vidas antes/después = 1/1; velocidad máxima = 7.3 (normal máx. 5.0)
+[Aprobada] P18 Súper poder: cerveza (Jorge Nitales): Tuberías del súper poder = 10; duró 12.7 s; puntos ganados = 20; vidas antes/después = 1/1; tuberías chocadas = 10
+[Aprobada] P19 Súper poder: papitas (Justo Prime): Tuberías del súper poder = 10; duró 15.9 s; puntos ganados = 10; vidas antes/después = 1/2; laguna visible = sí
+[Aprobada] P20 Súper poder: moto (Paleteado): Tuberías del súper poder = 10; duró 11.4 s; puntos ganados = 20; vidas antes/después = 1/1; árboles destrozados = 10
+[Aprobada] P21 Pausa: Estado = Paused; timeScale = 0; movimiento durante la pausa = 0.0000; al continuar el estado vuelve a Playing
+[Aprobada] P22 Sonido: Efectos generados = 33 de 33; canciones = 4
+[Aprobada] P23 Rendimiento y memoria (pooling): Objetos vivos entre el minuto 2 y el 10: entre 374 y 474 (no crecen); tuberías en el pool = 6; enemigos en el pool = 2; lógica = 0.024 ms por cuadro; puntos = 512
+[Aprobada con observaciones] P24 Jugabilidad automatizada: Puntos por partida: 17, 27, 27, 19, 37, 72, 70, 15, 79, 69, 17, 43, 17, 12, 22, 17, 17, 17, 49, 23, 17, 17, 17, 17, 30, 45, 50, 22, 27, 12, 63, 17, 19, 50, 33, 12, 32, 17, 32, 17; promedio = 30.3; máximo = 79; causa de la derrota: tubería 18, choque con enemigo 9, ataque enemigo (Stinger) 7, ataque enemigo (Bomb) 6
+
+23 aprobadas, 1 con observaciones, 0 no aprobadas de 24

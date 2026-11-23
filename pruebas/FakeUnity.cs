@@ -75,7 +75,12 @@ public static class Random { public static System.Random R=new System.Random(123
   public static float Range(float a,float b)=>a+(float)R.NextDouble()*(b-a); public static int Range(int a,int b)=> b<=a? a : R.Next(a,b);
   public static float value=>(float)R.NextDouble(); public static Vector2 insideUnitCircle=>new Vector2((float)R.NextDouble()-0.5f,(float)R.NextDouble()-0.5f); }
 public static class Time { public static float deltaTime=1/60f, time, timeScale=1, unscaledTime, unscaledDeltaTime=1/60f; }
-public static class Application { public static int targetFrameRate; }
+public enum LogType { Error, Assert, Warning, Log, Exception }
+public enum RuntimePlatform { WindowsPlayer, LinuxPlayer }
+public static class Application { public static int targetFrameRate; public static string persistentDataPath = System.IO.Path.GetTempPath(); public static RuntimePlatform platform = RuntimePlatform.LinuxPlayer; public static bool isBatchMode = true;
+  public delegate void LogCallback(string condition, string stackTrace, LogType type); public static event LogCallback logMessageReceived; public static void OpenURL(string url){}
+  public static void RaiseLog(string m, LogType t){ logMessageReceived?.Invoke(m, "", t); } }
+public static class Debug { public static void Log(object o){} public static void LogWarning(object o){} public static void LogError(object o){ Application.RaiseLog(o?.ToString(), LogType.Error); } }
 public static class Handheld { public static void Vibrate(){} }
 public enum CameraClearFlags { SolidColor }
 public class Camera : Behaviour { public static Camera main; public bool orthographic; public float orthographicSize=5, aspect=16f/9f; public CameraClearFlags clearFlags; public Color backgroundColor; public Vector3 WorldToScreenPoint(Vector3 v)=>v; }
@@ -96,7 +101,7 @@ public class Renderer : Component { public bool enabled=true; public int sorting
 public class SpriteRenderer : Renderer { public Sprite sprite; public Color color=Color.white; }
 public static class Screen { public static int width=1920, height=1080; public static Rect safeArea=new Rect(0,0,1920,1080); }
 public struct Matrix4x4 {} public enum ScaleMode { ScaleToFit }
-public enum TextAnchor { MiddleCenter, MiddleLeft } public enum FontStyle { Bold, Normal }
+public enum TextAnchor { MiddleCenter, MiddleLeft, MiddleRight } public enum FontStyle { Bold, Normal }
 public class RectOffset { public RectOffset(int a,int b,int c,int d){} }
 public class GUIStyleState { public Color textColor; public Texture2D background; }
 public class GUIStyle { public GUIStyle(){} public GUIStyle(GUIStyle o){} public TextAnchor alignment; public FontStyle fontStyle; public int fontSize; public bool wordWrap; public RectOffset border; public GUIStyleState normal=new GUIStyleState(), hover=new GUIStyleState(), active=new GUIStyleState(), focused=new GUIStyleState(); public void Draw(Rect r,bool a,bool b,bool c,bool d){} }
@@ -104,7 +109,7 @@ public class GUIContent { public static GUIContent none=new GUIContent(); }
 public class GUISkin { public GUIStyle label=new GUIStyle(), button=new GUIStyle(); }
 public static class GUI { public static GUISkin skin=new GUISkin(); public static Color color; public static Matrix4x4 matrix; public static void Label(Rect r,string t,GUIStyle s){} public static bool Button(Rect r,string t,GUIStyle s)=>false; public static bool Button(Rect r,GUIContent t,GUIStyle s)=>false; public static void DrawTexture(Rect r, Texture t){} public static void DrawTexture(Rect r, Texture t, ScaleMode m){} }
 public static class GUIUtility { public static int hotControl; public static void RotateAroundPivot(float a, Vector2 p){} public static void ScaleAroundPivot(Vector2 s, Vector2 p){} }
-public enum EventType { MouseDown, KeyDown, KeyUp, Repaint, Layout } public enum KeyCode { None, Space, UpArrow, W, Escape, P, X, F, RightArrow, LeftShift }
+public enum EventType { MouseDown, KeyDown, KeyUp, Repaint, Layout } public enum KeyCode { None, Space, UpArrow, W, Escape, P, X, F, RightArrow, LeftShift, F3 }
 public class Event { public static Event current=new Event{type=EventType.Layout}; public EventType type; public KeyCode keyCode; public int button; public Vector2 mousePosition; public void Use(){} }
 public enum RuntimeInitializeLoadType { AfterSceneLoad }
 public class RuntimeInitializeOnLoadMethodAttribute : Attribute { public RuntimeInitializeOnLoadMethodAttribute(RuntimeInitializeLoadType t){} }

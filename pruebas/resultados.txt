@@ -20,7 +20,8 @@
 [Aprobada] P20 Súper poder: moto (Paleteado): Tuberías del súper poder = 10; duró 11.4 s; puntos ganados = 20; vidas antes/después = 1/1; árboles destrozados = 10
 [Aprobada] P21 Pausa: Estado = Paused; timeScale = 0; movimiento durante la pausa = 0.0000; al continuar el estado vuelve a Playing
 [Aprobada] P22 Sonido: Efectos generados = 33 de 33; canciones = 4
-[Aprobada] P23 Rendimiento y memoria (pooling): Objetos vivos entre el minuto 2 y el 10: entre 374 y 474 (no crecen); tuberías en el pool = 6; enemigos en el pool = 2; lógica = 0.024 ms por cuadro; puntos = 512
+[Aprobada] P23 Rendimiento y memoria (pooling): Objetos vivos entre el minuto 2 y el 10: entre 374 y 474 (no crecen); tuberías en el pool = 6; enemigos en el pool = 2; lógica = 0.019 ms por cuadro; puntos = 512
 [Aprobada con observaciones] P24 Jugabilidad automatizada: Puntos por partida: 17, 27, 27, 19, 37, 72, 70, 15, 79, 69, 17, 43, 17, 12, 22, 17, 17, 17, 49, 23, 17, 17, 17, 17, 30, 45, 50, 22, 27, 12, 63, 17, 19, 50, 33, 12, 32, 17, 32, 17; promedio = 30.3; máximo = 79; causa de la derrota: tubería 18, choque con enemigo 9, ataque enemigo (Stinger) 7, ataque enemigo (Bomb) 6
+[Aprobada] P25 Registro de pruebas Beta: Líneas = 2; última = 2026-11-23 23:33:16,3,0.9.0-beta,"Pico","Cielo de las Tuberías",17,40.1,"tubería",1,0,0,60,60,0,"LinuxPlayer",1920x1080
 
-23 aprobadas, 1 con observaciones, 0 no aprobadas de 24
+24 aprobadas, 1 con observaciones, 0 no aprobadas de 25

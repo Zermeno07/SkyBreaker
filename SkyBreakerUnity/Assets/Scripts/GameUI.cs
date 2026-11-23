@@ -161,6 +161,7 @@ public partial class GameManager
         }
 
         DrawBanner(safe);
+        DrawFps(safe);
 
         // Los botones de arriba consumen su clic, así que aquí solo llegan toques "libres".
         HandleInput(Event.current);
@@ -171,6 +172,12 @@ public partial class GameManager
         bool flapKey = e.keyCode == KeyCode.Space || e.keyCode == KeyCode.UpArrow || e.keyCode == KeyCode.W;
         bool shootKey = e.keyCode == KeyCode.X || e.keyCode == KeyCode.F || e.keyCode == KeyCode.RightArrow || e.keyCode == KeyCode.LeftShift;
         if (e.type == EventType.KeyUp && flapKey) flapKeyHeld = false;
+        if (e.type == EventType.KeyDown && e.keyCode == KeyCode.F3)
+        {
+            BetaTelemetry.ShowFps = !BetaTelemetry.ShowFps;
+            e.Use();
+            return;
+        }
 
         bool press = e.type == EventType.MouseDown && e.button == 0;
         bool shoot = (e.type == EventType.MouseDown && e.button == 1) || (e.type == EventType.KeyDown && shootKey);
@@ -226,7 +233,7 @@ public partial class GameManager
         float top = safe.y + 20 * u;
         float bob = Mathf.Sin(Time.unscaledTime * 2f) * 8f * u;
         OutlineLabel(new Rect(0, top + bob, w, 120 * u), "SKY BREAKER", big, ZoneTheme.Hex(0xffd23f), 5f);
-        OutlineLabel(new Rect(0, top + 95 * u + bob, w, 45 * u), "Prototipo jugable · avance 75%", tiny, Color.white, 2f);
+        OutlineLabel(new Rect(0, top + 95 * u + bob, w, 45 * u), "Versión Beta " + BetaTelemetry.Version + " · Tester " + BetaTelemetry.TesterId, tiny, Color.white, 2f);
         OutlineLabel(new Rect(0, top + 140 * u, w, 50 * u), "Récord: " + HighScore, medium, Color.white, 3f);
 
         float y = top + 200 * u;
@@ -298,31 +305,46 @@ public partial class GameManager
 
     void DrawSettings(System.Action back)
     {
-        float w = Screen.width, h = Screen.height;
+        float w = Screen.width, h = Screen.height, u = uiScale;
         DrawDim(0.45f);
-        var panel = new Rect((w - 700 * uiScale) * 0.5f, h * 0.12f, 700 * uiScale, 620 * uiScale);
+        var panel = new Rect((w - 720 * u) * 0.5f, h * 0.03f, 720 * u, 660 * u);
         DrawPanel(panel);
-        OutlineLabel(new Rect(panel.x, panel.y + 15 * uiScale, panel.width, 80 * uiScale), "AJUSTES", medium, ZoneTheme.Hex(0xffd23f), 3f);
+        OutlineLabel(new Rect(panel.x, panel.y + 10 * u, panel.width, 70 * u), "AJUSTES", medium, ZoneTheme.Hex(0xffd23f), 3f);
 
-        float y = panel.y + 110 * uiScale;
+        float y = panel.y + 90 * u;
         float v = VolumeRow(panel, y, "Música", audioManager.MusicVolume);
         if (!Mathf.Approximately(v, audioManager.MusicVolume)) audioManager.SetMusicVolume(v);
-        y += 95 * uiScale;
+        y += 82 * u;
         v = VolumeRow(panel, y, "Efectos", audioManager.SfxVolume);
         if (!Mathf.Approximately(v, audioManager.SfxVolume)) { audioManager.SetSfxVolume(v); PlaySfx(Sfx.Score); }
-        y += 95 * uiScale;
+        y += 82 * u;
 
-        OutlineLabel(new Rect(panel.x + 30 * uiScale, y, 260 * uiScale, 70 * uiScale), "Vibración", small, Color.white, 2f);
-        if (Button(new Rect(panel.x + panel.width - 330 * uiScale, y, 300 * uiScale, 70 * uiScale), vibration ? "SÍ" : "NO"))
+        // Vibración y contador de FPS en la misma fila
+        float half = (panel.width - 90 * u) * 0.5f;
+        if (Button(new Rect(panel.x + 30 * u, y, half, 70 * u), "Vibración: " + (vibration ? "SÍ" : "NO")))
         {
             vibration = !vibration;
             PlayerPrefs.SetInt(GameConfig.VibrationKey, vibration ? 1 : 0);
             PlaySfx(Sfx.Click);
         }
-        y += 105 * uiScale;
+        if (Button(new Rect(panel.x + 60 * u + half, y, half, 70 * u), "Ver FPS: " + (BetaTelemetry.ShowFps ? "SÍ" : "NO")))
+        {
+            BetaTelemetry.ShowFps = !BetaTelemetry.ShowFps;
+            PlaySfx(Sfx.Click);
+        }
+        y += 82 * u;
+
+        // Número de tester para el registro de pruebas de la versión Beta
+        OutlineLabel(new Rect(panel.x + 30 * u, y, 260 * u, 70 * u), "Tester", small, Color.white, 2f, TextAnchor.MiddleLeft);
+        float tx = panel.x + 300 * u;
+        if (Button(new Rect(tx, y, 70 * u, 70 * u), "-")) { BetaTelemetry.TesterId--; PlaySfx(Sfx.Click); }
+        DrawPanel(new Rect(tx + 80 * u, y, 150 * u, 70 * u));
+        OutlineLabel(new Rect(tx + 80 * u, y, 150 * u, 70 * u), BetaTelemetry.TesterId.ToString(), small, ZoneTheme.Hex(0xffd23f), 2f);
+        if (Button(new Rect(tx + 240 * u, y, 70 * u, 70 * u), "+")) { BetaTelemetry.TesterId++; PlaySfx(Sfx.Click); }
+        y += 82 * u;
 
         string resetText = confirmReset ? "¿SEGURO? TOCA OTRA VEZ" : "BORRAR RÉCORD";
-        if (Button(new Rect(panel.x + 60 * uiScale, y, panel.width - 120 * uiScale, 70 * uiScale), resetText))
+        if (Button(new Rect(panel.x + 60 * u, y, panel.width - 120 * u, 70 * u), resetText))
         {
             PlaySfx(Sfx.Click);
             if (confirmReset)
@@ -334,14 +356,30 @@ public partial class GameManager
             }
             else confirmReset = true;
         }
-        y += 100 * uiScale;
-        if (Button(new Rect(panel.x + 160 * uiScale, y, panel.width - 320 * uiScale, 75 * uiScale), "VOLVER"))
+        y += 82 * u;
+        if (Button(new Rect(panel.x + 160 * u, y, panel.width - 320 * u, 70 * u), "VOLVER"))
         {
             PlaySfx(Sfx.Click);
             PlayerPrefs.Save();
             confirmReset = false;
             back();
         }
+        y += 78 * u;
+        if (Button(new Rect(panel.x + 110 * u, y, panel.width - 220 * u, 50 * u), "ABRIR REGISTRO DE PRUEBAS"))
+        {
+            PlaySfx(Sfx.Click);
+            Application.OpenURL("file:///" + Application.persistentDataPath.Replace("\\", "/"));
+        }
+    }
+
+    // Contador de FPS para las pruebas de rendimiento (Ajustes o tecla F3)
+    void DrawFps(Rect safe)
+    {
+        if (!BetaTelemetry.ShowFps) return;
+        float fps = BetaTelemetry.CurrentFps;
+        var col = fps >= 55f ? new Color(0.5f, 1f, 0.5f) : fps >= 30f ? new Color(1f, 0.85f, 0.3f) : new Color(1f, 0.4f, 0.4f);
+        OutlineLabel(new Rect(safe.xMax - 330 * uiScale, safe.y + 100 * uiScale, 310 * uiScale, 40 * uiScale),
+            Mathf.RoundToInt(fps) + " FPS · errores: " + BetaTelemetry.SessionErrors, tiny, col, 2f, TextAnchor.MiddleRight);
     }
 
     float VolumeRow(Rect panel, float y, string label, float value)

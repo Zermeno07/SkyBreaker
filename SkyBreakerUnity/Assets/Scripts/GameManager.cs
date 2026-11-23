@@ -49,6 +49,8 @@ public partial class GameManager : MonoBehaviour
     bool zoneSwapped;
 
     // Estadísticas de la partida
+    string lastHitCause = "";
+    bool runActive;
     int enemiesDestroyed;
     int powerUpsTaken;
     int zonesVisited;
@@ -63,6 +65,7 @@ public partial class GameManager : MonoBehaviour
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         Application.targetFrameRate = 60;
+        BetaTelemetry.Init();
 
         SetupCamera();
         world = new GameObject("Mundo").transform;
@@ -101,6 +104,7 @@ public partial class GameManager : MonoBehaviour
 
     void GoToMenu()
     {
+        EndRunLog("volvió al menú");
         Time.timeScale = 1f;
         ClearWorld();
         Score = 0;
@@ -117,6 +121,7 @@ public partial class GameManager : MonoBehaviour
 
     void StartGame()
     {
+        EndRunLog("reinició la partida");
         Time.timeScale = 1f;
         ClearWorld();
         Score = 0;
@@ -142,6 +147,9 @@ public partial class GameManager : MonoBehaviour
         ResetSuper();
         bird.Flap();
         State = GameState.Playing;
+        lastHitCause = "";
+        runActive = true;
+        BetaTelemetry.StartRun();
         audioManager.SetMusicDucked(false);
         audioManager.PlaySong(Theme.song);
         ShowBanner(Theme.name, "¡Supera tu récord!", Theme.uiAccent);
@@ -168,6 +176,7 @@ public partial class GameManager : MonoBehaviour
     {
         State = GameState.GameOver;
         gameOverTime = Time.unscaledTime;
+        EndRunLog(lastHitCause);
         audioManager.SetMusicDucked(true);
         PlaySfx(Sfx.GameOver);
         if (Score > HighScore)
@@ -198,11 +207,26 @@ public partial class GameManager : MonoBehaviour
         if (paused) Pause();
     }
 
+    void OnApplicationQuit()
+    {
+        EndRunLog("cerró el juego");
+    }
+
+    // Guarda la partida en el registro de pruebas de la versión Beta
+    void EndRunLog(string cause)
+    {
+        if (!runActive) return;
+        runActive = false;
+        BetaTelemetry.EndRun(Characters.Name(character), ZoneTheme.All[(int)startZone].name, Score, cause,
+            zonesVisited, powerUpsTaken, enemiesDestroyed);
+    }
+
     // ---------------------------------------------------------------- Bucle principal
 
     void Update()
     {
         float dt = Time.deltaTime;
+        BetaTelemetry.Tick(Time.unscaledDeltaTime, State == GameState.Playing);
         switch (State)
         {
             case GameState.Menu:
@@ -324,7 +348,7 @@ public partial class GameManager : MonoBehaviour
             {
                 pr.gameObject.SetActive(false);
                 if (pr.Kind == ProjectileKind.Bomb) fx.Explosion(pos, 0.8f);
-                Hurt();
+                Hurt(pr.Kind == ProjectileKind.Bomb ? "bomba del cuervo" : pr.Kind == ProjectileKind.Laser ? "láser del dron" : "aguijón de la avispa");
             }
         }
     }
@@ -401,13 +425,13 @@ public partial class GameManager : MonoBehaviour
         // El suelo y el techo siempre bloquean; quitan vida si no hay invulnerabilidad.
         if (c.y - r <= GameConfig.GroundY)
         {
-            if (!bird.IsInvulnerable && !Hurt()) return;
+            if (!bird.IsInvulnerable && !Hurt("suelo")) return;
             bird.BounceOffGround();
             return;
         }
         if (c.y + r >= GameConfig.CeilingY)
         {
-            if (!bird.IsInvulnerable && !Hurt()) return;
+            if (!bird.IsInvulnerable && !Hurt("techo")) return;
             bird.BounceOffCeiling();
             return;
         }
@@ -428,7 +452,7 @@ public partial class GameManager : MonoBehaviour
             {
                 if (pipe.gameObject.activeSelf && pipe.IsSolid && pipe.Overlaps(c, r))
                 {
-                    Hurt();
+                    Hurt("tubería");
                     return;
                 }
             }
@@ -439,15 +463,16 @@ public partial class GameManager : MonoBehaviour
             if (e.gameObject.activeSelf && (e.Position - c).sqrMagnitude < Sqr(r + e.Radius * GameConfig.EnemyHitboxScale))
             {
                 DestroyEnemy(e, false);
-                Hurt();
+                Hurt("choque con " + Enemy.DisplayName(e.Type).ToLower());
                 return;
             }
         }
     }
 
-    // Golpe a Pico. Devuelve true si sigue vivo.
-    bool Hurt()
+    // Golpe a Pico. Devuelve true si sigue vivo. La causa se guarda para el registro de pruebas.
+    bool Hurt(string cause)
     {
+        lastHitCause = cause;
         if (bird.HasShield)
         {
             bird.BreakShield();

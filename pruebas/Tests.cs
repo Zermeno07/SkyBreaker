@@ -85,11 +85,11 @@ public static class Tests {
       return ($"Vidas después del primer corazón = {a}; con 3 vidas = {gm.Lives}", a==2 && gm.Lives==3, false); });
 
     Test("P09","Invulnerabilidad tras un golpe","Se recibe un golpe con 2 vidas","Pierde 1 vida y queda invulnerable 2 s",()=>{
-      Start(); Set(gm,"Lives",2); Call(gm,"Hurt"); bool inv=bird.IsInvulnerable; Step(60*2+5); bool inv2=bird.IsInvulnerable;
+      Start(); Set(gm,"Lives",2); Call(gm,"Hurt","prueba"); bool inv=bird.IsInvulnerable; Step(60*2+5); bool inv2=bird.IsInvulnerable;
       return ($"Vidas = {gm.Lives}; invulnerable al instante = {inv}; a los 2.1 s = {inv2}", gm.Lives==1 && inv && !inv2, false); });
 
     Test("P10","Escudo","Se recibe un golpe con escudo","No pierde vida y el escudo se rompe",()=>{
-      Start(); bird.GiveShield(); Call(gm,"Hurt");
+      Start(); bird.GiveShield(); Call(gm,"Hurt","prueba");
       return ($"Vidas = {gm.Lives}; escudo = {bird.HasShield}", gm.Lives==1 && !bird.HasShield, false); });
 
     Test("P11","Disparo del cañón","Se dispara a un murciélago colocado enfrente","El enemigo explota, suma 2 puntos y se gasta 1 disparo",()=>{
@@ -181,6 +181,14 @@ public static class Tests {
         scores.Add(Score); causes[cause]=causes.ContainsKey(cause)?causes[cause]+1:1; }
       string cs=string.Join(", ",causes.OrderByDescending(x=>x.Value).Select(x=>x.Key+" "+x.Value));
       return ($"Puntos por partida: {string.Join(", ",scores)}; promedio = {scores.Average():0.0}; máximo = {scores.Max()}; causa de la derrota: {cs}", scores.Average()>=10, true); });
+
+    Test("P25","Registro de pruebas Beta","Se juega una partida completa y se revisa el archivo CSV del registro de pruebas","Se agrega una línea con el tester, los puntos, la duración y la causa de la derrota",()=>{
+      var path=BetaTelemetry.FilePath; if(System.IO.File.Exists(path)) System.IO.File.Delete(path);
+      Set(gm,"character",CharacterId.Pico); bird.SetCharacter(CharacterId.Pico); BetaTelemetry.TesterId=3; Start();
+      Play(60*60*3); while(gm.State==GameState.Playing) Step();
+      var lines=System.IO.File.ReadAllLines(path); var last=lines[lines.Length-1];
+      bool ok=lines.Length==2 && lines[0].StartsWith("fecha,tester") && last.Contains(",3,") && last.Contains("\"Pico\"") && last.Contains(","+Score+",");
+      return ($"Líneas = {lines.Length}; última = {last}", ok, false); });
 
     System.IO.File.WriteAllText("results.tsv", string.Join("\n", results.Select(r=>string.Join("\t", r.id,r.name,r.desc,r.expected,r.obtained,r.status))));
     Console.WriteLine($"\n{results.Count(r=>r.status=="Aprobada")} aprobadas, {results.Count(r=>r.status.StartsWith("Aprobada con"))} con observaciones, {results.Count(r=>r.status=="No aprobada")} no aprobadas de {results.Count}");

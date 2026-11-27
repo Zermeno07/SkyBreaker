@@ -1,6 +1,5 @@
 using System.IO;
 using UnityEditor;
-using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -46,10 +45,6 @@ public static class BuildBeta
         PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
         PlayerSettings.defaultScreenWidth = 1280;
         PlayerSettings.defaultScreenHeight = 720;
-        PlayerSettings.resizableWindow = true;
-        PlayerSettings.runInBackground = false;
-        PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, "com.idgs10d11.skybreaker");
-        PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26; // Android 8.0, como pide el GDD
 
         Directory.CreateDirectory(Path.GetDirectoryName(path));
         var options = new BuildPlayerOptions
